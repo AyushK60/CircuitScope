@@ -1,0 +1,26 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Node
+node_modules/
+frontend/dist/
+*.local
+
+# Generated experiment outputs / model caches
+outputs/
+*.npz
+.cache/
+
+# Environment / OS
+.env
+.DS_Store
+Thumbs.db
+
+# Test artifacts
+playwright-report/
+test-results/
+frontend/coverage/
