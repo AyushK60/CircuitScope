@@ -1,7 +1,27 @@
 # FINAL ACCEPTANCE REPORT
 
-Date: 2026-10-30. Stack: Python 3.11.9 · torch 2.15.0+cpu · transformer-lens
-4.3.0 · transformers 5.22.0 · FastAPI 0.162 · React 19 · Vite 8 · Node 24.
+Date: 2026-10-30 (v2 upgrade complete). Stack: Python 3.11.9 · torch
+2.15.0+cpu · transformer-lens 4.3.0 · transformers 5.22.0 · FastAPI 0.162 ·
+React 19 · Vite 8 · Node 24.
+
+## v2 upgrade status
+
+- Correct GPT-2 computational ordering: pre-LN diagram + order table verified
+  against the running model; residual paths drawn as real adds. ✅
+- Large multi-level anatomy explorer: model → block → head → inspector with
+  breadcrumbs, mode tabs, keyboard-accessible nodes, measured data views. ✅
+- Japanese-color ("Sumi & Ruri") visual system across every screen. ✅
+- Accurate computation-flow playback: 16 recorded stages from one real pass,
+  honest timing label, play/pause/step/jump, completed state. ✅
+- Connected activation + attention visualizations: residual norms across
+  blocks (model level), per-token norms (block level), attention heatmaps
+  (head level) — one captured run feeds all of them. ✅
+- Polished playground with genuine before/after results (unchanged science,
+  new theme, verified again in-browser). ✅
+- Responsive UX: 320/390px verified, no overflow; mobile header/nav pattern. ✅
+- Tests: 30 pytest + 6 Vitest + 8 Playwright, all green; production build. ✅
+- Browser screenshot audits: landing, explorer (anatomy + flow), playground,
+  learn at desktop and mobile. ✅
 
 ## P0 release-blocking gates — ALL PASS
 
@@ -43,10 +63,10 @@ Date: 2026-10-30. Stack: Python 3.11.9 · torch 2.15.0+cpu · transformer-lens
 4. **PNG chart export** — JSON/CSV only.
 5. **Zero-ablation / scaling interventions** — not exposed (README permits
    patching as the guaranteed intervention; others need numeric checks first).
-6. **Computation-flow playback (Feature C)** — the guided stage story is
-   covered by the Explorer's model→block→head walkthrough and static stage
-   annotations; a separate animated playback mode was deferred in favor of the
-   verified vertical slice. No fabricated timing animations were added.
+6. ~~Computation-flow playback (Feature C)~~ — **completed in v2**: guided replay of
+   16 recorded stages with play/pause/step/jump from one real forward pass
+   (/api/flow), honestly labeled as presentation pacing. The former deferral is
+   resolved; no fabricated timing animations were added.
 
 ## Verification evidence summary
 

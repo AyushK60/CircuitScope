@@ -1,7 +1,27 @@
 # EXECUTION STATE — resumable checkpoint
 
-Last updated: 2026-10-30. All milestone gates M0–M7 have been executed; see
-FINAL_ACCEPTANCE_REPORT.md for the honest gate-by-gate status.
+Last updated: 2026-10-30 (v2 upgrade). See FINAL_ACCEPTANCE_REPORT.md for the
+honest gate-by-gate status and docs/DECISIONS.md for design decisions.
+
+## v2 upgrade (this session)
+
+- **/api/flow** — one real forward pass recorded: exact tokens, per-block
+  residual-stream L2 norms (per token + mean), and all 12 layers' attention
+  patterns. Powers the playback and data views.
+- **"Sumi & Ruri" visual system** — Japanese traditional color palette
+  (墨/藍鉄 base, 瑠璃 primary, 浅葱 measured signal, 朱 interventions, 山吹
+  patched, 若竹 clean, 猩紅 corrupted), mincho display headings, washi-texture
+  background, dark color-scheme for native controls.
+- **Computation Flow playback** (Explorer ▸ Computation Flow tab) — guided
+  replay of 16 recorded stages (tokenize, embed, blocks 0–11, final LN,
+  logits) with play/pause/step/jump and a completed state. Every heatmap, norm
+  and score is measured data from /api/flow; timing label states that stage
+  pacing is presentation, not GPU kernel timing.
+- **Connected data views** — model-level residual-norm-across-blocks chart
+  (measured, clickable), per-token norm chart at block level, head-level
+  attention heatmap (existing) — all from the same captured run.
+- **Responsive fixes** — labels no longer overlap inline controls; SVG
+  diagrams are viewBox-scalable (320px verified, overflow ≤ 2px).
 
 ## What works right now
 
@@ -12,8 +32,8 @@ FINAL_ACCEPTANCE_REPORT.md for the honest gate-by-gate status.
 - **Frontend** (`frontend/`): React 19 + TypeScript + Vite. Landing (live
   prediction demo), Model Explorer (3 levels + inspector), Intervention
   Playground (real 3-run experiments, metrics, exports), Learn page.
-- **Tests**: 26 pytest (engine, API, reference agreement), 6 Vitest,
-  6 Playwright E2E — all passing.
+- **Tests**: 30 pytest (engine, API, flow capture, reference agreement), 6
+  Vitest, 8 Playwright E2E — all passing.
 
 ## Launch procedure (Windows, from E:\CircuitScope)
 
@@ -48,14 +68,15 @@ cd frontend && npx playwright test                       :: E2E (needs both serv
    `run_with_cache` in TransformerLens 4.3.0 — excluded from the allowlist.
 3. Experiment history in the UI shows current-session jobs; SQLite persists
    results but there is no history browse screen yet (API + export exist).
-4. Explorer attention heatmap is the only measured activation view; MLP/
-   residual activation views are API-supported but not yet visualized.
+4. Flow playback stage pacing is fixed (1.6 s/stage) — deliberately not
+   presented as measured latency; only elapsed_seconds is a real measurement.
 5. No PNG chart export (JSON + CSV only).
 6. Playwright suite requires both servers running (no auto-webServer config).
 
 ## Next steps if resuming
 
 - History browse UI + rename/delete with confirmation.
-- Residual-stream/MLP activation views in Explorer (data exists via /api/inspect).
+- Residual-stream/MLP activation magnitude views beyond norms (e.g., top
+  contributing dimensions) via /api/inspect.
 - CUDA torch install + GPU verification run.
 - Optional: zero-ablation intervention type (backend design ready via heads/positions extension).
