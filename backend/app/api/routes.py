@@ -75,6 +75,18 @@ def predict(req: PredictRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
+@router.post("/flow")
+def flow(req: PredictRequest) -> dict:
+    """Recorded single-pass flow data for the computation playback."""
+    try:
+        meta = ADAPTER.metadata()
+        return {"model": meta, **engine.capture_flow(req.text)}
+    except ModelNotLoadedError:
+        raise HTTPException(status_code=503, detail="model not loaded yet")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
+
 @router.post("/inspect")
 def inspect(req: InspectRequest) -> dict:
     try:

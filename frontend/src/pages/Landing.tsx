@@ -151,7 +151,7 @@ export default function Landing({
         </p>
         <div className="grid-2" style={{ alignItems: "start" }}>
           <div>
-            <label htmlFor="demo-input" style={{ fontSize: "0.85rem", color: "var(--text-2)" }}>
+            <label htmlFor="demo-input" style={{ fontSize: "0.85rem", color: "var(--text-2)", display: "block", marginBottom: "0.3rem" }}>
               Input text (tokenized live)
             </label>
             <input id="demo-input" type="text" value={text} onChange={(e) => setText(e.target.value)} />

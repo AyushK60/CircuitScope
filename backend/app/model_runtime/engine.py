@@ -85,6 +85,49 @@ def capture(text: str, hook_names: list[str]) -> dict:
     return out, cache
 
 
+def capture_flow(text: str) -> dict:
+    """One real forward pass recording everything the flow playback needs.
+
+    Returns exact tokens, per-block residual-stream L2 norms (measured from
+    blocks.N.hook_out), and the full attention pattern for every block
+    (rounded to 3 decimals for transport). This is recorded execution data,
+    not a synthetic animation script.
+    """
+    bridge = ADAPTER.bridge()
+    toks = bridge.to_tokens(text)
+    if toks.shape[1] > MAX_CAPTURE_TOKENS:
+        raise InterventionError("input too long for flow capture")
+    n_layers = ADAPTER.metadata()["n_layers"]
+    wanted = {f"blocks.{l}.hook_out" for l in range(n_layers)} | {
+        f"blocks.{l}.attn.hook_pattern" for l in range(n_layers)
+    }
+    logits, cache = bridge.run_with_cache(toks, names_filter=lambda n: n in wanted)
+    blocks = []
+    for l in range(n_layers):
+        resid = cache[f"blocks.{l}.hook_out"][0]  # [seq, d_model]
+        pat = cache[f"blocks.{l}.attn.hook_pattern"][0]  # [heads, q, k]
+        blocks.append(
+            {
+                "layer": l,
+                # per-token residual norm, then sequence mean — labeled aggregation
+                "resid_norm_per_token": [round(float(x), 2) for x in resid.norm(dim=-1).tolist()],
+                "resid_norm_mean": round(float(resid.norm(dim=-1).mean()), 2),
+                "attention": [
+                    [[round(float(x), 3) for x in key_row] for key_row in query_row]
+                    for query_row in pat.tolist()
+                ],
+            }
+        )
+    return {
+        "hook_basis": "blocks.{L}.hook_out + blocks.{L}.attn.hook_pattern (single forward pass)",
+        "tokens": bridge.to_str_tokens(text),
+        "token_ids": toks[0].tolist(),
+        "n_layers": n_layers,
+        "blocks": blocks,
+        "top_predictions": topk_predictions(logits, 8),
+    }
+
+
 def attention_pattern(text: str, layer: int) -> dict:
     """Full attention pattern [n_heads, seq, seq] for one layer, as lists."""
     if not 0 <= layer < ADAPTER.metadata()["n_layers"]:

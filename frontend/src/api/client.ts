@@ -40,6 +40,22 @@ export interface Prediction {
   device: string;
 }
 
+export interface FlowBlock {
+  layer: number;
+  resid_norm_per_token: number[];
+  resid_norm_mean: number;
+  attention: number[][][];
+}
+
+export interface FlowData {
+  hook_basis: string;
+  tokens: string[];
+  token_ids: number[];
+  n_layers: number;
+  blocks: FlowBlock[];
+  top_predictions: Candidate[];
+}
+
 export interface AttentionPattern {
   hook: string;
   shape: number[];
@@ -126,6 +142,11 @@ export const api = {
       "/api/inspect",
       { method: "POST", body: JSON.stringify({ text, layer }) },
     ),
+  flow: (text: string) =>
+    call<{ model: ModelMeta } & FlowData>("/api/flow", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
   startExperiment: (spec: {
     clean_text: string;
     corrupted_text: string;

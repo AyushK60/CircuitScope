@@ -12,12 +12,12 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
   const matrix = att?.pattern?.[head];
 
   const color = useMemo(() => {
-    // sequential teal scale, value in [0,1] (attention weights sum to 1 per row)
+    // sequential asagi→ruri scale; value in [0,1] (attention weights sum to 1 per row)
     return (v: number) => {
       const t = Math.max(0, Math.min(1, v));
-      const r = Math.round(22 + t * 48);
-      const g = Math.round(38 + t * 170);
-      const b = Math.round(56 + t * 144);
+      const r = Math.round(26 + t * 48);
+      const g = Math.round(40 + t * 106);
+      const b = Math.round(58 + t * 142);
       return `rgb(${r},${g},${b})`;
     };
   }, []);
@@ -77,7 +77,7 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
       </svg>
       <div className="legend-scale">
         <span>0</span>
-        <div className="legend-bar" style={{ background: "linear-gradient(90deg, rgb(22,38,56), rgb(70,208,200))" }} />
+        <div className="legend-bar" style={{ background: "linear-gradient(90deg, rgb(26,40,58), rgb(74,186,200))" }} />
         <span>attention weight 1.0 · rows sum to 1</span>
         <span className="mono" style={{ marginLeft: "auto" }}>
           {att.hook} · head {head} · shape {att.shape.join("×")}
