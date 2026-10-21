@@ -75,6 +75,45 @@ test.describe("CircuitScope core journey", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(2);
+    // explorer (fixed-width SVG diagrams) must also fit
+    await page.goto("/#/explorer");
+    await expect(page.getByText("Measured residual stream (data view)")).toBeVisible({
+      timeout: 30_000,
+    });
+    const overflowExplorer = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflowExplorer).toBeLessThanOrEqual(2);
+  });
+
+  test("flow playback: guided replay with recorded stages and honest timing", async ({ page }) => {
+    await page.goto("/#/explorer");
+    await page.getByRole("tab", { name: "Computation Flow" }).click();
+    await page.getByRole("button", { name: "▶ Play" }).click();
+    // playback advances through real block stages showing measured heatmaps
+    await expect(page.getByRole("heading", { name: /Transformer block/ })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(page.getByText(/blocks\.0\.attn\.hook_pattern/).first()).toBeVisible();
+    // honest timing label is always present
+    await expect(page.getByText(/not measured GPU time/)).toBeVisible();
+    // step controls work
+    await page.getByRole("button", { name: "Step forward" }).click();
+    // jumping to the final stage shows the completed-run state
+    await page.getByRole("tab", { name: "logits" }).click();
+    await expect(page.getByText(/Completed run/)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("heading", { name: "Stage · Output scores" })).toBeVisible();
+  });
+
+  test("anatomy data view: measured residual norms across all blocks", async ({ page }) => {
+    await page.goto("/#/explorer");
+    await expect(page.getByText("Measured residual stream (data view)")).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText("MEASURED", { exact: true })).toBeVisible();
+    for (let l = 0; l < 12; l++) {
+      await expect(page.getByRole("button", { name: new RegExp(`Block ${l}: mean residual norm`) })).toBeVisible();
+    }
   });
 
   test("no major console errors across the journey", async ({ page }) => {

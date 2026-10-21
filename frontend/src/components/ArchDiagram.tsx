@@ -47,6 +47,7 @@ export function FullModelDiagram({
         className="arch-svg"
         width={W}
         height={H}
+        viewBox={`0 0 ${W} ${H}`}
         role="img"
         aria-label={`Architecture of ${meta.model_id}: ${meta.n_layers} transformer blocks`}
       >
@@ -143,7 +144,7 @@ export function BlockDiagram({
 
   return (
     <div className="diagram-wrap">
-      <svg className="arch-svg" width={W} height={H} role="img" aria-label={`Internals of transformer block ${layer}`}>
+      <svg className="arch-svg" width={W} height={H} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Internals of transformer block ${layer}`}>
         <defs>
           <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-1)" />
