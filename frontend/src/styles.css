@@ -1,29 +1,31 @@
-/* CircuitScope design system — "Sumi & Ruri" observatory identity.
-   Japanese traditional color (和色) palette on a deep ink foundation:
-     墨 sumi ink #14161c · 藍鉄 aitetsu #1d2330 · 瑠璃 ruri #4a86c8
-     浅葱 asagi #5fb0bd · 朱 shu #d95c2f · 山吹 yamabuki #e0a33e
-     若竹 wakatake #7dbe8f · 猩紅 shokei #e05a5a · 胡粉 gofun #f2efe6
+/* CircuitScope design system — "Sumi & Persimmon" observatory identity.
+   Warm mineral palette in the spirit of Sanzo Wada's color harmony:
+     warm charcoal #1e2221 · mineral ink #2b302d · porcelain #eee9de
+     persimmon #df795a · brass #d5b46a · sage #91aa91
+     dusty violet #a08cb8 · lavender #b9a8d2 (selection)
    Scientific observatory layout and truthfulness rules unchanged. */
 
 :root {
   color-scheme: dark;
-  --bg-0: #12141a; /* 墨 */
-  --bg-1: #171b25;
-  --bg-2: #1e2432; /* 藍鉄 */
-  --bg-3: #262e40;
-  --line-0: #2b3345;
-  --line-1: #3a4459;
-  --text-0: #f2efe6; /* 胡粉 */
-  --text-1: #b8bcc8;
-  --text-2: #7e8598;
-  --accent: #4a86c8; /* 瑠璃 */
-  --accent-dim: #2d5680;
-  --asagi: #5fb0bd; /* 浅葱 — measured signal */
-  --warm: #d95c2f; /* 朱 — interventions */
-  --gold: #e0a33e; /* 山吹 — patched results */
-  --violet: #9a86c8; /* 藤 murasaki — residual stream */
-  --danger: #e05a5a; /* 猩紅 */
-  --ok: #7dbe8f; /* 若竹 */
+  --bg-0: #1e2221; /* warm near-charcoal */
+  --bg-1: #232824;
+  --bg-2: #2b302d; /* mineral ink */
+  --bg-3: #343a36;
+  --line-0: #3b423c;
+  --line-1: #4c544c;
+  --text-0: #eee9de; /* warm porcelain */
+  --text-1: #b6b4a8; /* muted stone */
+  --text-2: #84867c;
+  --accent: #df795a; /* persimmon */
+  --accent-dim: #9c5540;
+  --brass: #d5b46a; /* structural accent */
+  --sage: #91aa91; /* measured signal */
+  --warm: #df795a; /* interventions */
+  --gold: #d5b46a; /* patched results */
+  --violet: #a08cb8; /* dusty violet — residual stream */
+  --lavender: #b9a8d2; /* selected state */
+  --danger: #c96a5e; /* muted vermilion — corrupted */
+  --ok: #91aa91; /* clean */
   --radius: 10px;
   --radius-sm: 6px;
   --font-mono: "Cascadia Code", "JetBrains Mono", Consolas, monospace;
@@ -63,7 +65,7 @@ h1 { font-size: 2.6rem; letter-spacing: -0.01em; font-family: var(--font-display
 h2 { font-size: 1.5rem; font-family: var(--font-display); font-weight: 500; }
 h3 { font-size: 1.1rem; }
 p { margin: 0.4rem 0; }
-a { color: var(--asagi); }
+a { color: var(--sage); }
 code, .mono { font-family: var(--font-mono); font-size: 0.92em; }
 
 :focus-visible { outline: none; box-shadow: var(--focus); border-radius: var(--radius-sm); }
@@ -85,11 +87,11 @@ button:hover:not(:disabled) { border-color: var(--accent); background: #2c364d; 
 button:active:not(:disabled) { transform: translateY(1px); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 button.primary {
-  background: linear-gradient(135deg, #2d5680, #22405f);
+  background: linear-gradient(135deg, #b9603f, #9c5540);
   border-color: var(--accent);
   font-weight: 600;
 }
-button.primary:hover:not(:disabled) { background: linear-gradient(135deg, #356595, #28496d); }
+button.primary:hover:not(:disabled) { background: linear-gradient(135deg, #cf6c46, #ad5f42); }
 button.ghost { background: transparent; }
 button.danger { border-color: #6e3232; color: var(--danger); }
 
@@ -113,14 +115,14 @@ button.danger { border-color: #6e3232; color: var(--danger); }
   font-weight: 600; font-size: 1.2rem; letter-spacing: 0.01em;
   color: var(--text-0); text-decoration: none;
 }
-.wordmark .scope { color: var(--asagi); font-family: var(--font-display); }
+.wordmark .scope { color: var(--sage); font-family: var(--font-display); }
 .nav { display: flex; gap: 0.25rem; flex: 1; }
 .nav a {
   color: var(--text-1); text-decoration: none;
   padding: 0.35rem 0.85rem; border-radius: var(--radius-sm);
 }
 .nav a:hover { color: var(--text-0); background: var(--bg-2); }
-.nav a.active { color: var(--asagi); background: var(--bg-2); }
+.nav a.active { color: var(--sage); background: var(--bg-2); }
 .model-status-chip {
   display: flex; align-items: center; gap: 0.45rem;
   font-size: 0.82rem; color: var(--text-1);
@@ -162,11 +164,11 @@ button.danger { border-color: #6e3232; color: var(--danger); }
   position: absolute; inset: 0; pointer-events: none;
   /* soft ruri aurora, decoration only — no fake data */
   background:
-    radial-gradient(ellipse 60% 50% at 78% 18%, rgba(74, 134, 200, 0.10), transparent 70%),
-    radial-gradient(ellipse 45% 40% at 15% 80%, rgba(95, 176, 189, 0.06), transparent 70%);
+    radial-gradient(ellipse 60% 50% at 78% 18%, rgba(223, 121, 90, 0.09), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 15% 80%, rgba(213, 180, 106, 0.06), transparent 70%);
 }
 .hero .kicker {
-  color: var(--asagi); text-transform: uppercase;
+  color: var(--sage); text-transform: uppercase;
   letter-spacing: 0.18em; font-size: 0.8rem; font-weight: 600;
   margin-bottom: 1rem;
 }
@@ -187,7 +189,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
   width: 2.2rem; height: 2px; background: var(--accent);
 }
 .pillar .num {
-  font-family: var(--font-mono); color: var(--asagi);
+  font-family: var(--font-mono); color: var(--sage);
   font-size: 0.85rem; letter-spacing: 0.1em;
 }
 .pillar h3 { margin: 0.5rem 0 0.3rem; }
@@ -221,6 +223,44 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 .token.hl { border-color: var(--accent); color: var(--accent); }
 .token.subject { border-color: var(--warm); color: var(--warm); }
 
+/* ---- architecture canvas ---- */
+
+.canvas-shell { width: 100%; }
+.canvas-controls {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  background: rgba(30, 34, 33, 0.92);
+  border: 1px solid var(--line-0);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.45rem;
+}
+.canvas-controls button { padding: 0.2rem 0.55rem; font-size: 0.85rem; }
+.canvas-tooltip {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  background: rgba(30, 34, 33, 0.97);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.7rem;
+  font-size: 0.78rem;
+  color: var(--text-1);
+  max-width: 300px;
+  box-shadow: var(--shadow);
+}
+.canvas-tooltip strong { color: var(--text-0); display: block; margin-bottom: 0.15rem; }
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* ---- diagrams ---- */
 
 .diagram-wrap { width: 100%; overflow-x: auto; }
@@ -229,14 +269,14 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 .arch-node { cursor: pointer; }
 .arch-node rect { transition: stroke 0.15s, fill 0.15s; }
 .arch-node:hover rect { stroke: var(--accent); }
-.arch-node.selected rect { stroke: var(--accent); stroke-width: 2; fill: #1d3040; }
+.arch-node.selected rect { stroke: var(--lavender); stroke-width: 2; fill: #3a3644; }
 .arch-edge { stroke: var(--line-1); fill: none; }
 .arch-edge.resid { stroke: var(--violet); stroke-dasharray: 3 3; opacity: 0.7; }
 
 .head-cell { cursor: pointer; }
 .head-cell rect { rx: 3; }
 .head-cell:hover rect { stroke: var(--text-0); }
-.head-cell.selected rect { stroke: var(--accent); stroke-width: 2; }
+.head-cell.selected rect { stroke: var(--lavender); stroke-width: 2; }
 
 .heatmap-wrap { overflow-x: auto; }
 .legend-scale { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-2); margin-top: 0.4rem; flex-wrap: wrap; }
@@ -256,7 +296,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
   flex: 1; height: 8px; border-radius: 3px; cursor: pointer;
   background: var(--bg-3); border: none; padding: 0;
 }
-.playback-stage.active { background: var(--asagi); }
+.playback-stage.active { background: var(--sage); }
 .playback-stage.done { background: var(--accent-dim); }
 .playback-timing-note { font-size: 0.78rem; color: var(--text-2); }
 .stage-panel { min-height: 15rem; }
@@ -299,7 +339,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 
 .spinner {
   width: 16px; height: 16px; border-radius: 50%;
-  border: 2px solid var(--line-1); border-top-color: var(--asagi);
+  border: 2px solid var(--line-1); border-top-color: var(--sage);
   animation: spin 0.8s linear infinite; flex: none;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -323,7 +363,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 
 .mode-tabs { display: inline-flex; border: 1px solid var(--line-1); border-radius: var(--radius-sm); overflow: hidden; }
 .mode-tabs button { border: none; border-radius: 0; padding: 0.4rem 1rem; font-size: 0.88rem; background: transparent; }
-.mode-tabs button.active { background: var(--bg-3); color: var(--asagi); }
+.mode-tabs button.active { background: var(--bg-3); color: var(--sage); }
 
 /* ---- playground ---- */
 
@@ -335,7 +375,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 
 .depth-toggle { display: inline-flex; border: 1px solid var(--line-1); border-radius: var(--radius-sm); overflow: hidden; }
 .depth-toggle button { border: none; border-radius: 0; padding: 0.3rem 0.8rem; font-size: 0.82rem; background: transparent; }
-.depth-toggle button.active { background: var(--bg-3); color: var(--asagi); }
+.depth-toggle button.active { background: var(--bg-3); color: var(--sage); }
 
 .kv-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .kv-table td { padding: 0.3rem 0.5rem; border-bottom: 1px solid var(--line-0); }

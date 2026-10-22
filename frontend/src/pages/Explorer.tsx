@@ -7,12 +7,12 @@ import {
   type ModelMeta,
   type Tokenization,
 } from "../api/client";
-import { BlockDiagram, FullModelDiagram } from "../components/ArchDiagram";
+import ArchitectureCanvas, { type CanvasLevel } from "../components/ArchitectureCanvas";
 import AttentionHeatmap from "../components/AttentionHeatmap";
 import FlowPlayback from "../components/FlowPlayback";
 import TokenRow from "../components/TokenRow";
 
-type Level = "model" | "block" | "head";
+type Level = CanvasLevel | "head";
 type Mode = "anatomy" | "flow";
 
 const EXAMPLE = "The doctor asked the nurse to help her because she was tired.";
@@ -53,35 +53,36 @@ export default function Explorer({ health }: { health: Health | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
-  const breadcrumbs = useMemo(() => {
+  const crumbs = useMemo(() => {
     const items: { label: string; go: () => void }[] = [
       { label: "Whole model", go: () => setLevel("model") },
     ];
     if (level !== "model") items.push({ label: `Block ${layer}`, go: () => setLevel("block") });
+    if (level === "attn" || level === "head")
+      items.push({ label: "Attention", go: () => setLevel("attn") });
     if (level === "head") items.push({ label: `Head ${head}`, go: () => setLevel("head") });
     return items;
   }, [level, layer, head]);
 
   if (!ready) {
     return (
-      <main className="page">
+      <main className="page" style={{ maxWidth: "1400px" }}>
         <h1>Model Explorer</h1>
         <div className="state-banner info">
           <span className="spinner" aria-hidden /> The model is loading. The explorer reads real layer/head
-          counts and captured activations, so it needs the model ready. This takes ~1 minute after backend
-          start.
+          counts and captured activations, so it needs the model ready (~1 minute after backend start).
         </div>
       </main>
     );
   }
 
   return (
-    <main className="page">
+    <main className="page" style={{ maxWidth: "1400px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.8rem" }}>
         <div>
           <h1>Model Explorer</h1>
           <p className="breadcrumbs" aria-label="Breadcrumb">
-            {breadcrumbs.map((b, i) => (
+            {crumbs.map((b, i) => (
               <span key={i} style={{ display: "contents" }}>
                 {i > 0 && <span aria-hidden> › </span>}
                 <button onClick={b.go}>{b.label}</button>
@@ -98,20 +99,19 @@ export default function Explorer({ health }: { health: Health | null }) {
           </button>
         </div>
         <div className="inspector-meta" style={{ textAlign: "right" }}>
-          {meta.model_id} · {meta.n_layers} blocks · {meta.n_heads} heads · d_model {meta.d_model} ·{" "}
-          {meta.device}
+          {meta.model_id} · {meta.n_layers} blocks · {meta.n_heads} heads · d_model {meta.d_model} · {meta.device}
         </div>
       </div>
 
-      <div className="panel">
-        <div className="grid-2">
-          <div>
-            <label htmlFor="explorer-text" style={{ fontSize: "0.85rem", color: "var(--text-2)", display: "block", marginBottom: "0.3rem" }}>
+      <div className="panel" style={{ padding: "0.9rem 1.2rem" }}>
+        <div style={{ display: "flex", gap: "0.8rem", alignItems: "end", flexWrap: "wrap" }}>
+          <div style={{ flex: 2, minWidth: "260px" }}>
+            <label htmlFor="explorer-text" style={{ fontSize: "0.85rem", color: "var(--text-2)" }}>
               Input for measured views
             </label>
             <textarea id="explorer-text" rows={2} value={text} onChange={(e) => setText(e.target.value)} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
             <button
               className="primary"
               onClick={() => {
@@ -121,188 +121,172 @@ export default function Explorer({ health }: { health: Health | null }) {
               }}
               disabled={busy}
             >
-              {busy ? "Capturing…" : "Run & capture activations"}
+              {busy ? "Capturing…" : "Run & capture"}
             </button>
             <button onClick={() => { setText(EXAMPLE); setRunText(EXAMPLE); runCapture(EXAMPLE, layer); }}>
-              Use example
+              Example
             </button>
           </div>
+          <div style={{ flex: 2, minWidth: "240px" }}>
+            <span style={{ fontSize: "0.85rem", color: "var(--text-2)", display: "block" }}>Tokens received</span>
+            <TokenRow tok={tokenization} />
+          </div>
         </div>
-        <h3 style={{ marginTop: "0.8rem" }}>Tokens received by the model (position IDs shown)</h3>
-        <TokenRow tok={tokenization} />
         {error && <div className="state-banner error" style={{ marginTop: "0.6rem" }}>{error}</div>}
       </div>
 
       {mode === "flow" ? (
         <div style={{ marginTop: "1rem" }}>
           <p style={{ color: "var(--text-1)", maxWidth: "80ch" }}>
-            A guided replay of one real forward pass through the model: tokenization, embeddings, every
-            transformer block, final normalization, and output scores. Every heatmap, norm, and score below
-            was captured from the actual run on your text.
+            A guided replay of one real forward pass: tokenization, embeddings, every transformer block,
+            final normalization, and output scores. Every heatmap, norm, and score below was captured from
+            the actual run on your text.
           </p>
           <FlowPlayback flow={flow} />
         </div>
       ) : (
-        <>
-          {level === "model" && (
-            <div className="grid-2" style={{ alignItems: "start", marginTop: "1rem" }}>
-              <div className="panel">
-                <h2>End-to-end computational path</h2>
-                <FullModelDiagram
-                  meta={meta}
-                  selectedLayer={null}
-                  onSelectLayer={(l) => {
-                    setLayer(l);
-                    setLevel("block");
-                  }}
-                  tokenCount={tokenization?.n_tokens ?? null}
-                />
-              </div>
-              <div className="panel">
-                <h2>Measured residual stream (data view)</h2>
-                <p className="inspector-meta">
-                  L2 norm of the residual stream after each block, averaged over tokens — from the real
-                  captured run on your input. How information accumulates as it travels upward.
-                </p>
-                <ResidNormAcrossLayers flow={flow} onSelectLayer={(l) => { setLayer(l); setLevel("block"); }} />
-                <h3 style={{ marginTop: "1rem" }}>Jump to a block</h3>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem" }}>
-                  {Array.from({ length: meta.n_layers }, (_, l) => (
-                    <button
-                      key={l}
-                      style={{ padding: "0.25rem 0.6rem", fontSize: "0.8rem" }}
-                      onClick={() => {
-                        setLayer(l);
-                        setLevel("block");
-                      }}
-                    >
-                      B{l}
-                    </button>
-                  ))}
-                </div>
-                <p className="schematic-note">
-                  <span className="static-badge">MEASURED</span> norms from blocks.N.hook_out; the diagram on
-                  the left is structure from live metadata.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {level === "block" && (
-            <div className="grid-2" style={{ alignItems: "start", marginTop: "1rem" }}>
-              <div className="panel">
-                <h2>Inside transformer block {layer}</h2>
-                <BlockDiagram
-                  meta={meta}
-                  layer={layer}
-                  onSelectAttention={() => setLevel("head")}
-                  onSelectMlp={() => setLevel("head")}
-                />
-              </div>
-              <div className="panel">
-                <h3>Computation order (verified pre-LN)</h3>
-                <table className="kv-table">
-                  <tbody>
-                    <tr><td>1 · input</td><td>residual stream, {meta.d_model} dims</td></tr>
-                    <tr><td>2 · LN1</td><td>normalize → feeds attention only</td></tr>
-                    <tr><td>3 · attention</td><td>{meta.n_heads} heads × d_head {meta.d_head}, causal mask</td></tr>
-                    <tr><td>4 · add</td><td>attention output added to stream</td></tr>
-                    <tr><td>5 · LN2</td><td>normalize → feeds MLP only</td></tr>
-                    <tr><td>6 · MLP</td><td>{meta.d_model} → {meta.d_mlp} → {meta.d_model}, GELU</td></tr>
-                    <tr><td>7 · add</td><td>MLP output added to stream → next block</td></tr>
-                  </tbody>
-                </table>
-                <h3 style={{ marginTop: "1rem" }}>Measured residual norm after this block</h3>
-                {flow && (
-                  <TokenNormRow
-                    norms={flow.blocks[layer].resid_norm_per_token}
-                    tokens={flow.tokens}
-                  />
-                )}
-                <h3 style={{ marginTop: "1rem" }}>All {meta.n_heads} heads of this block</h3>
-                <p style={{ color: "var(--text-1)" }}>Select a head to inspect its measured attention pattern.</p>
-                <HeadGrid
-                  nHeads={meta.n_heads}
-                  selected={head}
-                  onSelect={(h) => {
-                    setHead(h);
-                    setLevel("head");
-                  }}
-                />
-              </div>
-            </div>
-          )}
-
-          {level === "head" && (
-            <div className="grid-2" style={{ alignItems: "start", marginTop: "1rem" }}>
-              <div className="panel">
-                <h2>
-                  Attention head {head} of block {layer}
-                </h2>
-                <AttentionHeatmap att={attention} head={head} />
-                <div style={{ marginTop: "0.8rem" }}>
-                  <HeadGrid nHeads={meta.n_heads} selected={head} onSelect={(h) => setHead(h)} />
-                </div>
-              </div>
-              <div className="panel">
-                <h3>Numerical inspector</h3>
-                <dl className="inspector-meta">
-                  <dt>Hook identifier</dt>
-                  <dd>blocks.{layer}.attn.hook_pattern</dd>
-                  <dt>Tensor shape</dt>
-                  <dd>{attention ? attention.shape.join(" × ") : "—"} (heads × query pos × key pos)</dd>
-                  <dt>Displayed slice</dt>
-                  <dd>head {head}, all {attention?.tokens.length ?? "—"} query/key positions (unreduced)</dd>
-                  <dt>Value scale</dt>
-                  <dd>softmax attention weights ∈ [0, 1]; each query row sums to 1.0</dd>
-                  <dt>Source run</dt>
-                  <dd>{runText.slice(0, 48)}{runText.length > 48 ? "…" : ""}</dd>
-                  <dt>Provenance</dt>
-                  <dd>{meta.model_id} · {meta.device} · {meta.dtype} · captured live</dd>
-                </dl>
-                <p className="inspector-meta" style={{ marginTop: "0.8rem" }}>
-                  <strong>Reading this honestly:</strong> an attention pattern shows where a head distributes
-                  its query attention. It is a descriptive measurement, <em>not</em> proof of what the head
-                  causes — that requires the intervention experiments in the Playground.
-                </p>
-              </div>
-            </div>
-          )}
-        </>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.6fr) minmax(300px, 1fr)", gap: "1rem", marginTop: "1rem", alignItems: "start" }}>
+          <div className="panel" style={{ padding: "0.6rem" }}>
+            <ArchitectureCanvas
+              meta={meta}
+              flow={flow}
+              level={level === "head" ? "attn" : (level as CanvasLevel)}
+              layer={layer}
+              keyboardFocusLayer={layer}
+              onLevel={(l) => setLevel(l)}
+              onLayer={(l) => setLayer(l)}
+              onHead={(h) => {
+                setHead(h);
+                setLevel("head");
+              }}
+            />
+          </div>
+          <div className="panel">
+            <InspectorConsole
+              meta={meta}
+              flow={flow}
+              level={level}
+              layer={layer}
+              head={head}
+              attention={attention}
+              onLayer={(l) => { setLayer(l); setLevel("block"); }}
+              onHead={(h) => { setHead(h); setLevel("head"); }}
+              runText={runText}
+            />
+          </div>
+        </div>
       )}
     </main>
   );
 }
 
-/** Measured residual norm per token, rendered under the token labels. */
-function TokenNormRow({ norms, tokens }: { norms: number[]; tokens: string[] }) {
-  const max = Math.max(...norms, 1e-9);
+function InspectorConsole({
+  meta,
+  flow,
+  level,
+  layer,
+  head,
+  attention,
+  onLayer,
+  onHead,
+  runText,
+}: {
+  meta: ModelMeta;
+  flow: FlowData | null;
+  level: Level;
+  layer: number;
+  head: number;
+  attention: AttentionPattern | null;
+  onLayer: (l: number) => void;
+  onHead: (h: number) => void;
+  runText: string;
+}) {
+  if (level === "model") {
+    return (
+      <>
+        <h3>Measured residual stream</h3>
+        <p className="inspector-meta">
+          L2 norm of the residual stream after each block, averaged over tokens — from the real captured
+          run. Click a bar to open that block.
+        </p>
+        <ResidNormAcrossLayers flow={flow} onSelectLayer={onLayer} />
+        <h3 style={{ marginTop: "1rem" }}>How to explore</h3>
+        <p className="inspector-meta">
+          Click any block on the canvas to zoom into it. Inside, open the attention anatomy and pick one of
+          the 12 heads to see its real token-level pattern. Wheel zooms, drag pans, ↑↓ move the focus, Enter
+          opens.
+        </p>
+        <p className="schematic-note">
+          <span className="static-badge">STRUCTURE + MEASURED</span> stage order from live metadata; brass
+          bars and token strip from the real run.
+        </p>
+      </>
+    );
+  }
+  if (level === "block") {
+    return (
+      <>
+        <h3>Block {layer} · verified pre-LN order</h3>
+        <table className="kv-table">
+          <tbody>
+            <tr><td>1 · input</td><td>residual stream, {meta.d_model} dims</td></tr>
+            <tr><td>2 · LN1</td><td>normalize → feeds attention only</td></tr>
+            <tr><td>3 · attention</td><td>{meta.n_heads} heads × d_head {meta.d_head}, causal</td></tr>
+            <tr><td>4 · add</td><td>attention output added to stream</td></tr>
+            <tr><td>5 · LN2</td><td>normalize → feeds MLP only</td></tr>
+            <tr><td>6 · MLP</td><td>{meta.d_model} → {meta.d_mlp} → {meta.d_model}, GELU</td></tr>
+            <tr><td>7 · add</td><td>MLP output added → next block</td></tr>
+          </tbody>
+        </table>
+        {flow && (
+          <>
+            <h3 style={{ marginTop: "1rem" }}>Residual norm per token (after this block)</h3>
+            <p className="inspector-meta mono">{flow.blocks[layer].resid_norm_per_token.join(" · ")}</p>
+          </>
+        )}
+      </>
+    );
+  }
+  if (level === "attn") {
+    return (
+      <>
+        <h3>Attention anatomy · block {layer}</h3>
+        <p className="inspector-meta">
+          Per head: A = softmax(QKᵀ/√{meta.d_head} + mask), out = A·V. Heads are parallel lanes; the
+          combined output is concat({meta.n_heads}×{meta.d_head}) → W_O.
+        </p>
+        <h3 style={{ marginTop: "1rem" }}>Select a head</h3>
+        <HeadGrid nHeads={meta.n_heads} selected={head} onSelect={onHead} />
+        <p className="inspector-meta" style={{ marginTop: "0.6rem" }}>
+          An attention pattern is a descriptive measurement — where each query token distributes its
+          attention. It is not proof of what the head causes; that requires the Playground interventions.
+        </p>
+      </>
+    );
+  }
+  // head level
   return (
-    <div className="norm-chart-wrap">
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 60 }}>
-        {norms.map((n, i) => (
-          <div
-            key={i}
-            title={`${tokens[i]}: ${n}`}
-            style={{
-              flex: 1,
-              height: `${(n / max) * 100}%`,
-              minHeight: 3,
-              background: "var(--violet)",
-              opacity: 0.85,
-              borderRadius: 2,
-            }}
-          />
-        ))}
+    <>
+      <h3>Head {head} of block {layer}</h3>
+      <AttentionHeatmap att={attention} head={head} />
+      <div style={{ marginTop: "0.8rem" }}>
+        <HeadGrid nHeads={meta.n_heads} selected={head} onSelect={onHead} />
       </div>
-      <div style={{ display: "flex", gap: 3 }}>
-        {tokens.map((t, i) => (
-          <div key={i} style={{ flex: 1, textAlign: "center", fontSize: "0.6rem", color: "var(--text-2)", overflow: "hidden", whiteSpace: "nowrap" }}>
-            {t}
-          </div>
-        ))}
-      </div>
-    </div>
+      <dl className="inspector-meta" style={{ marginTop: "0.8rem" }}>
+        <dt>Hook identifier</dt>
+        <dd>blocks.{layer}.attn.hook_pattern</dd>
+        <dt>Tensor shape</dt>
+        <dd>{attention ? attention.shape.join(" × ") : "—"} (heads × query × key)</dd>
+        <dt>Displayed slice</dt>
+        <dd>head {head}, all positions (unreduced)</dd>
+        <dt>Value scale</dt>
+        <dd>softmax weights ∈ [0, 1], rows sum to 1.0</dd>
+        <dt>Source run</dt>
+        <dd>{runText.slice(0, 44)}{runText.length > 44 ? "…" : ""}</dd>
+        <dt>Provenance</dt>
+        <dd>{meta.model_id} · {meta.device} · {meta.dtype}</dd>
+      </dl>
+    </>
   );
 }
 
@@ -336,18 +320,13 @@ function ResidNormAcrossLayers({
             flex: 1,
             height: `${(m / max) * 100}%`,
             minHeight: 4,
-            background: "linear-gradient(180deg, var(--accent), var(--accent-dim))",
+            background: "linear-gradient(180deg, var(--brass), var(--accent-dim))",
             borderRadius: 3,
             cursor: "pointer",
             position: "relative",
           }}
         >
-          <span
-            style={{
-              position: "absolute", bottom: -18, left: 0, right: 0,
-              textAlign: "center", fontSize: "0.62rem", color: "var(--text-2)",
-            }}
-          >
+          <span style={{ position: "absolute", bottom: -18, left: 0, right: 0, textAlign: "center", fontSize: "0.62rem", color: "var(--text-2)" }}>
             {l}
           </span>
         </div>
@@ -391,7 +370,7 @@ function HeadGrid({
           aria-label={`Head ${h}`}
         >
           <rect x={(h % cols) * (size + 6)} y={Math.floor(h / cols) * (size + 6)} width={size} height={size} fill="var(--bg-3)" stroke="var(--line-1)" />
-          <text x={(h % cols) * (size + 6) + size / 2} y={Math.floor(h / cols) * (size + 6) + size / 2 + 4} fill={h === selected ? "var(--accent)" : "var(--text-1)"} fontSize={11} textAnchor="middle">
+          <text x={(h % cols) * (size + 6) + size / 2} y={Math.floor(h / cols) * (size + 6) + size / 2 + 4} fill={h === selected ? "var(--lavender)" : "var(--text-1)"} fontSize={11} textAnchor="middle">
             {h}
           </text>
         </g>
