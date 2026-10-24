@@ -8,7 +8,7 @@ import Learn from "./pages/Learn";
 type Route = "landing" | "explorer" | "playground" | "learn";
 
 function currentRoute(): Route {
-  const h = window.location.hash.replace("#/", "");
+  const h = window.location.hash.replace("#/", "").split("?")[0];
   return (["explorer", "playground", "learn"].includes(h) ? h : "landing") as Route;
 }
 

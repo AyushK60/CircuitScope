@@ -98,6 +98,100 @@ const DEPTH_LABEL: Record<Depth, string> = {
   technical: "Technical",
 };
 
+/** Small accurate contextual diagrams — schematic, labeled, no fake data. */
+function TopicDiagram({ term }: { term: string }) {
+  const common = { fill: "none", stroke: "var(--line-1)" } as const;
+  switch (term) {
+    case "Token":
+      return (
+        <svg viewBox="0 0 300 54" width="100%" role="img" aria-label="A sentence split into tokens">
+          <text x={8} y={33} fill="var(--text-1)" fontSize={13} fontFamily="var(--font-mono)">
+            {`" the shop "`}
+          </text>
+          {[
+            { x: 8, w: 34, t: `"·the` },
+            { x: 46, w: 30, t: `shop` },
+          ].map((s, i) => (
+            <g key={i}>
+              <rect x={140 + i * 76} y={14} width={s.w + 16} height={26} rx={4} fill="var(--bg-2)" stroke="var(--line-0)" />
+              <text x={148 + i * 76} y={31} fill="var(--text-1)" fontSize={11} fontFamily="var(--font-mono)">
+                {i === 0 ? "·the" : "shop"}
+              </text>
+            </g>
+          ))}
+          <text x={140} y={10} fill="var(--text-2)" fontSize={8}>
+            tokens — note the leading space ·
+          </text>
+        </svg>
+      );
+    case "Attention":
+      return (
+        <svg viewBox="0 0 300 70" width="100%" role="img" aria-label="One query token attending back to earlier tokens with different weights">
+          {[
+            { x: 40, w: 0.9 },
+            { x: 105, w: 0.5 },
+            { x: 170, w: 0.25 },
+            { x: 235, w: 0.1 },
+          ].map((k, i) => (
+            <g key={i}>
+              <path
+                d={`M 250 30 C 200 30, ${k.x + 20} 46, ${k.x} 54`}
+                stroke="var(--accent)"
+                strokeWidth={Math.max(0.8, k.w * 4)}
+                opacity={0.35 + k.w * 0.6}
+                fill="none"
+              />
+              <rect x={k.x - 14} y={54} width={44} height={12} rx={3} {...common} />
+            </g>
+          ))}
+          <rect x={228} y={22} width={46} height={14} rx={3} fill="var(--bg-3)" stroke="var(--accent)" />
+          <text x={251} y={32} fill="var(--text-0)" fontSize={9} textAnchor="middle">
+            query
+          </text>
+          <text x={8} y={16} fill="var(--text-2)" fontSize={8}>
+            thicker = larger attention weight (rows sum to 1)
+          </text>
+        </svg>
+      );
+    case "Residual connection":
+      return (
+        <svg viewBox="0 0 300 70" width="100%" role="img" aria-label="Blocks adding into a continuous residual stream">
+          <path d="M 16 35 L 284 35" stroke="var(--violet)" strokeWidth={2} strokeDasharray="4 4" fill="none" />
+          {[60, 150, 240].map((x, i) => (
+            <g key={i}>
+              <rect x={x - 26} y={12} width={52} height={16} rx={3} fill="var(--bg-3)" stroke="var(--line-1)" />
+              <text x={x} y={23} fill="var(--text-2)" fontSize={8} textAnchor="middle">
+                block {i}
+              </text>
+              <path d={`M ${x} 28 L ${x} 35`} stroke="var(--text-2)" fill="none" markerEnd="" />
+            </g>
+          ))}
+          <text x={150} y={60} fill="var(--text-2)" fontSize={8} textAnchor="middle">
+            each block adds its contribution to the same stream
+          </text>
+        </svg>
+      );
+    case "Attention head":
+      return (
+        <svg viewBox="0 0 300 60" width="100%" role="img" aria-label="Twelve parallel head lanes">
+          {Array.from({ length: 12 }, (_, h) => (
+            <g key={h}>
+              <rect x={20 + h * 22} y={16} width={16} height={22} rx={3} fill="var(--bg-3)" stroke="var(--line-1)" />
+              <text x={28 + h * 22} y={52} fill="var(--text-2)" fontSize={7} textAnchor="middle">
+                H{h}
+              </text>
+            </g>
+          ))}
+          <text x={150} y={10} fill="var(--text-2)" fontSize={8} textAnchor="middle">
+            12 parallel lanes — computed together, not one after another
+          </text>
+        </svg>
+      );
+    default:
+      return null;
+  }
+}
+
 export default function Learn() {
   const [depth, setDepth] = useState<Depth>("context");
   return (
@@ -138,6 +232,7 @@ export default function Learn() {
       {TOPICS.map((t) => (
         <div className="panel" key={t.term}>
           <h3>{t.term}</h3>
+          <TopicDiagram term={t.term} />
           <p style={{ color: "var(--text-1)" }}>{t[depth]}</p>
         </div>
       ))}

@@ -244,6 +244,12 @@ function InspectorConsole({
             <p className="inspector-meta mono">{flow.blocks[layer].resid_norm_per_token.join(" · ")}</p>
           </>
         )}
+        <a
+          href={`#/playground?hook=blocks.${layer}.hook_out&position=9`}
+          style={{ display: "inline-block", marginTop: "1rem" }}
+        >
+          <button className="primary">Patch this block in the Playground →</button>
+        </a>
       </>
     );
   }

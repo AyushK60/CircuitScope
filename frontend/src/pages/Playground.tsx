@@ -19,28 +19,101 @@ const PRESET = {
   s2_position: 9,
 };
 
-/** Patchable hooks offered, grouped for clarity. The allowlist is enforced by
- *  the backend; these are the verified-supported options. */
+/** Patchable hooks offered — all verified in the backend allowlist
+ *  (PATCHABLE_HOOKS). Generated so the UI can never desync from state. */
 const HOOK_OPTIONS = [
-  { value: "blocks.5.hook_out", label: "Block 5 · residual stream (recommended)" },
-  { value: "blocks.6.hook_out", label: "Block 6 · residual stream" },
-  { value: "blocks.7.hook_out", label: "Block 7 · residual stream" },
-  { value: "blocks.8.hook_out", label: "Block 8 · residual stream" },
-  { value: "blocks.9.hook_out", label: "Block 9 · residual stream" },
-  { value: "blocks.5.attn.hook_out", label: "Block 5 · attention output" },
+  ...Array.from({ length: 12 }, (_, l) => ({
+    value: `blocks.${l}.hook_out`,
+    label: `Block ${l} · residual stream${l === 5 ? " (recommended)" : ""}`,
+  })),
+  ...Array.from({ length: 12 }, (_, l) => ({
+    value: `blocks.${l}.attn.hook_out`,
+    label: `Block ${l} · attention output`,
+  })),
   { value: "blocks.5.attn.hook_z", label: "Block 5 · attention z (per-head)" },
-  { value: "blocks.9.attn.hook_out", label: "Block 9 · attention output" },
-  { value: "blocks.5.mlp.hook_out", label: "Block 5 · MLP output" },
+  ...[5, 9].map((l) => ({
+    value: `blocks.${l}.mlp.hook_out`,
+    label: `Block ${l} · MLP output`,
+  })),
 ];
 
 type RunState = "idle" | "running" | "complete" | "failed" | "cancelled";
 
+/** Reads #/playground?hook=...&position=... so the Explorer can carry a
+ *  selected component into the laboratory. */
+function readParams(): { hook?: string; position?: number } {
+  const q = window.location.hash.split("?")[1];
+  if (!q) return {};
+  const p = new URLSearchParams(q);
+  const position = p.get("position");
+  return {
+    hook: p.get("hook") ?? undefined,
+    position: position != null && !Number.isNaN(Number(position)) ? Number(position) : undefined,
+  };
+}
+
+/** Mini architecture strip: where in the real 12-block pipeline this patch sits. */
+function TargetStrip({ hook, position, tokens }: { hook: string; position: number; tokens: string[] }) {
+  const match = hook.match(/blocks\.(\d+)\./);
+  const layer = match ? Number(match[1]) : null;
+  const kind = hook.includes("mlp") ? "MLP" : hook.includes("attn") ? "attention" : "residual stream";
+  return (
+    <div className="target-strip">
+      <svg viewBox="0 0 720 74" width="100%" role="img" aria-label={`Patch target: ${hook} at token position ${position}`}>
+        {/* residual rail */}
+        <path d="M 16 20 L 704 20" stroke="var(--violet)" strokeDasharray="4 4" strokeWidth={2} fill="none" />
+        <text x={16} y={12} fill="var(--violet)" fontSize={9}>
+          residual stream
+        </text>
+        {Array.from({ length: 12 }, (_, l) => {
+          const x = 20 + l * 57;
+          const isTarget = layer === l;
+          return (
+            <g key={l}>
+              <path d={`M ${x + 24} 20 L ${x + 24} 34`} stroke="var(--violet)" strokeDasharray="3 3" fill="none" opacity={0.6} />
+              <rect
+                x={x}
+                y={34}
+                width={48}
+                height={28}
+                rx={5}
+                fill={isTarget ? "var(--bg-1)" : "var(--bg-3)"}
+                stroke={isTarget ? "var(--accent)" : "var(--line-1)"}
+                strokeWidth={isTarget ? 2 : 1}
+              />
+              <text x={x + 24} y={52} fill={isTarget ? "var(--accent)" : "var(--text-2)"} fontSize={10} textAnchor="middle">
+                B{l}
+              </text>
+              {isTarget && (
+                <text x={x + 24} y={72} fill="var(--accent)" fontSize={8.5} textAnchor="middle">
+                  {kind} · patch here
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+      {tokens.length > 0 && (
+        <div className="token-row" aria-label="Patch position on the clean tokens">
+          {tokens.map((t, i) => (
+            <span key={i} className={`token${i === position ? " hl" : ""}`} title={`position ${i}`}>
+              {t}
+              <span className="idx">{i}</span>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Playground({ health }: { health: Health | null }) {
   const ready = health?.model_loaded === true;
+  const params = useRef(readParams()).current;
   const [clean, setClean] = useState(PRESET.clean);
   const [corrupted, setCorrupted] = useState(PRESET.corrupted);
-  const [hook, setHook] = useState("blocks.5.hook_out");
-  const [position, setPosition] = useState(PRESET.s2_position);
+  const [hook, setHook] = useState(params.hook ?? "blocks.5.hook_out");
+  const [position, setPosition] = useState(params.position ?? PRESET.s2_position);
   const [tokenization, setTokenization] = useState<Tokenization | null>(null);
   const [baseline, setBaseline] = useState<Prediction | null>(null);
 
@@ -127,7 +200,16 @@ export default function Playground({ health }: { health: Health | null }) {
 
       <div className="panel">
         <h2>1 · Choose the experiment</h2>
-        <div className="grid-2">
+        <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
+          Intervention target in the real pipeline — the highlighted block is where the clean activation
+          will replace the corrupted one:
+        </p>
+        <TargetStrip
+          hook={hook}
+          position={position}
+          tokens={tokenization?.tokens ?? []}
+        />
+        <div className="grid-2" style={{ marginTop: "1rem" }}>
           <div>
             <label htmlFor="clean-text" style={{ fontSize: "0.85rem", color: "var(--text-2)" }}>
               Clean prompt
