@@ -18,26 +18,40 @@ test.describe("CircuitScope core journey", () => {
     await page.goto("/");
     await expect(page.getByRole("status")).toContainText("GPT-2 ready", { timeout: 30_000 });
     // auto demo runs when model is ready
-    await expect(page.getByText("Tokens the model actually receives")).toBeVisible();
+    await expect(page.getByText("Tokens the model receives")).toBeVisible();
     await expect(page.getByText("<|endoftext|>").first()).toBeVisible();
     // measured probability appears (Mary is top for the preset example)
     await expect(page.getByText("66.2").first()).toBeVisible({ timeout: 30_000 });
+    // hero schematic is labeled as structure, not telemetry
+    await expect(page.getByText(/SCHEMATIC/).first()).toBeVisible();
   });
 
-  test("explorer: model → block → head heatmap with real shapes", async ({ page }) => {
+  test("explorer: model → block → attention anatomy → head heatmap", async ({ page }) => {
     await page.goto("/#/explorer");
     await expect(page.getByText("gpt2 · 12 blocks · 12 heads")).toBeVisible({ timeout: 30_000 });
-    // expand block 5
-    await page.getByRole("button", { name: "Transformer Block 5" }).click();
-    await expect(page.getByText("Computation order (verified pre-LN)")).toBeVisible();
-    // open head 4
-    await page.getByRole("button", { name: "Head 4", exact: true }).click();
-    await expect(page.getByRole("heading", { name: "Attention head 4 of block 5" })).toBeVisible();
-    // heatmap provenance from the real hook
+    // drill into block 5 on the canvas
+    await page.getByRole("button", { name: "Open transformer block 5" }).click();
+    await expect(page.getByText("Block 5 · verified pre-LN order")).toBeVisible({ timeout: 15_000 });
+    // open attention anatomy
+    await page.getByRole("button", { name: "Open attention anatomy" }).click();
+    await expect(page.getByText("Attention anatomy · block 5")).toBeVisible();
+    // pick head 4 → measured heatmap with real provenance
+    await page.getByRole("button", { name: "Inspect head 4" }).click();
+    await expect(page.getByRole("heading", { name: "Head 4 of block 5" })).toBeVisible();
     await expect(page.getByText("blocks.5.attn.hook_pattern").first()).toBeVisible();
     await expect(page.getByText(/12 × 14 × 14/)).toBeVisible();
-    // inspector shows token positions and scale honestly
-    await expect(page.getByText("softmax attention weights")).toBeVisible();
+    await expect(page.getByText("softmax weights")).toBeVisible();
+  });
+
+  test("explorer→playground handoff carries the selected hook", async ({ page }) => {
+    await page.goto("/#/playground?hook=blocks.7.attn.hook_out&position=6");
+    await expect(page.getByRole("heading", { name: "Intervention Playground" })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByLabel("Activation to replace (clean → corrupted)")).toHaveValue(
+      "blocks.7.attn.hook_out",
+    );
+    await expect(page.getByText(/attention · patch here/)).toBeVisible();
   });
 
   test("playground: full intervention experiment produces measured comparison", async ({ page }) => {
@@ -77,9 +91,7 @@ test.describe("CircuitScope core journey", () => {
     expect(overflow).toBeLessThanOrEqual(2);
     // explorer (fixed-width SVG diagrams) must also fit
     await page.goto("/#/explorer");
-    await expect(page.getByText("Measured residual stream (data view)")).toBeVisible({
-      timeout: 30_000,
-    });
+    await expect(page.getByText("Measured residual stream")).toBeVisible({ timeout: 30_000 });
     const overflowExplorer = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
@@ -107,10 +119,8 @@ test.describe("CircuitScope core journey", () => {
 
   test("anatomy data view: measured residual norms across all blocks", async ({ page }) => {
     await page.goto("/#/explorer");
-    await expect(page.getByText("Measured residual stream (data view)")).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(page.getByText("MEASURED", { exact: true })).toBeVisible();
+    await expect(page.getByText("Measured residual stream")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("STRUCTURE + MEASURED")).toBeVisible();
     for (let l = 0; l < 12; l++) {
       await expect(page.getByRole("button", { name: new RegExp(`Block ${l}: mean residual norm`) })).toBeVisible();
     }

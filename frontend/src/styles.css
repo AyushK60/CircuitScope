@@ -524,3 +524,17 @@ footer.site-footer {
   padding: 0.7rem 0.9rem 0.5rem;
   margin-bottom: 0.4rem;
 }
+
+@media (max-width: 480px) {
+  .ref-row strong { flex-basis: 100%; text-align: left; }
+  .flow-arrow { display: none; }
+}
+
+/* grid children must be allowed to shrink below content min-width */
+.grid-2 > *, .grid-3 > * { min-width: 0; }
+.ref-row strong { overflow-wrap: anywhere; }
+
+code { overflow-wrap: anywhere; }
+
+.explorer-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(280px, 1fr); gap: 1rem; }
+@media (max-width: 900px) { .explorer-grid { grid-template-columns: 1fr; } }

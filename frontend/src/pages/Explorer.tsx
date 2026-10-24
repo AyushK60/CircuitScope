@@ -145,7 +145,7 @@ export default function Explorer({ health }: { health: Health | null }) {
           <FlowPlayback flow={flow} />
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.6fr) minmax(300px, 1fr)", gap: "1rem", marginTop: "1rem", alignItems: "start" }}>
+        <div className="explorer-grid" style={{ alignItems: "start", marginTop: "1rem" }}>
           <div className="panel" style={{ padding: "0.6rem" }}>
             <ArchitectureCanvas
               meta={meta}

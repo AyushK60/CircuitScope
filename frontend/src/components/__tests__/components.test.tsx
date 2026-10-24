@@ -3,7 +3,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import TopPredictions from "../TopPredictions";
 import TokenRow from "../TokenRow";
 import AttentionHeatmap from "../AttentionHeatmap";
-import { FullModelDiagram } from "../ArchDiagram";
+import ArchitectureCanvas from "../ArchitectureCanvas";
 import type { AttentionPattern, Candidate, ModelMeta } from "../../api/client";
 
 afterEach(cleanup);
@@ -65,11 +65,22 @@ describe("TokenRow", () => {
   });
 });
 
-describe("FullModelDiagram", () => {
-  it("renders one node per real model block from metadata", () => {
-    render(<FullModelDiagram meta={meta} selectedLayer={null} onSelectLayer={() => {}} tokenCount={5} />);
+describe("ArchitectureCanvas", () => {
+  it("renders one block per real model layer, in correct order", () => {
+    render(
+      <ArchitectureCanvas
+        meta={meta}
+        flow={null}
+        level="model"
+        layer={5}
+        keyboardFocusLayer={5}
+        onLevel={() => {}}
+        onLayer={() => {}}
+        onHead={() => {}}
+      />,
+    );
     for (let l = 0; l < 12; l++) {
-      expect(screen.getByRole("button", { name: `Transformer Block ${l}` })).toBeTruthy();
+      expect(screen.getByRole("button", { name: `Open transformer block ${l}` })).toBeTruthy();
     }
   });
 });
