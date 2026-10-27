@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import TopPredictions from "../TopPredictions";
 import TokenRow from "../TokenRow";
 import AttentionHeatmap from "../AttentionHeatmap";
@@ -110,5 +110,29 @@ describe("AttentionHeatmap", () => {
     // 9 cells for head 1
     expect(svg.querySelectorAll("rect").length).toBe(9);
     expect(screen.getByText(/blocks\.5\.attn\.hook_pattern/)).toBeTruthy();
+  });
+
+  it("selecting a query token shows its measured top attended tokens", () => {
+    const att: AttentionPattern = {
+      hook: "blocks.5.attn.hook_pattern",
+      shape: [1, 3, 3],
+      tokens: ["<|endoftext|>", "Hello", " world"],
+      pattern: [
+        [
+          [1.0, 0.0, 0.0],
+          [0.5, 0.5, 0.0],
+          [0.2, 0.3, 0.5],
+        ],
+      ],
+    };
+    const { container } = render(<AttentionHeatmap att={att} head={0} />);
+    // click the left-side query label (last svg text with this token)
+    const labels = [...container.querySelectorAll("svg text")].filter(
+      (t) => t.textContent === " world",
+    );
+    fireEvent.click(labels[labels.length - 1]);
+    const status = screen.getByRole("status");
+    expect(status.textContent).toContain("0.500");
+    expect(status.textContent).toContain("causal mask");
   });
 });

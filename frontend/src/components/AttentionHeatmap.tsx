@@ -4,12 +4,25 @@ import type { AttentionPattern } from "../api/client";
 const CELL = 26;
 
 /** Token-to-token attention heatmap for one head, from a real captured
- *  hook_pattern tensor. Values shown on hover; rows sum to 1. */
+ *  hook_pattern tensor. Values shown on hover; rows sum to 1.
+ *  Clicking a query token selects it: that row is highlighted, other rows dim,
+ *  and the measured top attended tokens are listed (causal mask visible as the
+ *  empty upper triangle). */
 export default function AttentionHeatmap({ att, head }: { att: AttentionPattern | null; head: number }) {
   const [hover, setHover] = useState<{ q: number; k: number } | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<number | null>(null);
 
   const tokens = att?.tokens ?? [];
   const matrix = att?.pattern?.[head];
+
+  const topAttended = useMemo(() => {
+    if (selectedQuery == null || !matrix) return null;
+    const row = matrix[selectedQuery];
+    return row
+      .map((v, k) => ({ v, k }))
+      .sort((a, b) => b.v - a.v)
+      .slice(0, 4);
+  }, [selectedQuery, matrix]);
 
   const color = useMemo(() => {
     // sequential ink→persimmon warm scale; value in [0,1] (rows sum to 1)
@@ -34,7 +47,7 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
         width={width}
         height={height}
         role="img"
-        aria-label={`Attention pattern for head ${head}, layer pattern tensor ${att.hook}, shape ${att.shape.join("x")}`}
+        aria-label={`Attention pattern for head ${head}, tensor ${att.hook}, shape ${att.shape.join("x")}. Click a query token to highlight its attention row.`}
       >
         {tokens.map((t, k) => (
           <text
@@ -50,24 +63,50 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
           </text>
         ))}
         {tokens.map((t, q) => (
-          <text key={`q${q}`} x={84} y={40 + q * CELL + CELL / 2 + 4} fill="var(--text-2)" fontSize={10} textAnchor="end">
+          <text
+            key={`q${q}`}
+            x={84}
+            y={40 + q * CELL + CELL / 2 + 4}
+            fill={selectedQuery === q ? "var(--accent)" : "var(--text-2)"}
+            fontSize={10}
+            textAnchor="end"
+            style={{ cursor: "pointer" }}
+            onClick={() => setSelectedQuery((s) => (s === q ? null : q))}
+          >
             {t}
           </text>
         ))}
         {matrix.map((row, q) =>
-          row.map((v, k) => (
-            <rect
-              key={`${q}-${k}`}
-              x={90 + k * CELL}
-              y={40 + q * CELL}
-              width={CELL - 2}
-              height={CELL - 2}
-              fill={color(v)}
-              stroke={hover && hover.q === q && hover.k === k ? "var(--text-0)" : "transparent"}
-              onMouseEnter={() => setHover({ q, k })}
-              onMouseLeave={() => setHover(null)}
-            />
-          )),
+          row.map((v, k) => {
+            const dimmed = selectedQuery != null && selectedQuery !== q;
+            return (
+              <rect
+                key={`${q}-${k}`}
+                x={90 + k * CELL}
+                y={40 + q * CELL}
+                width={CELL - 2}
+                height={CELL - 2}
+                fill={color(v)}
+                opacity={dimmed ? 0.25 : 1}
+                stroke={selectedQuery === q && v > 0.001 ? "var(--brass)" : "transparent"}
+                strokeWidth={selectedQuery === q ? 1 : 0}
+                onMouseEnter={() => setHover({ q, k })}
+                onMouseLeave={() => setHover(null)}
+              />
+            );
+          }),
+        )}
+        {selectedQuery != null && (
+          <rect
+            x={88}
+            y={40 + selectedQuery * CELL - 1}
+            width={n * CELL + 4}
+            height={CELL}
+            fill="none"
+            stroke="var(--accent)"
+            strokeWidth={1.5}
+            pointerEvents="none"
+          />
         )}
         {hover && (
           <text x={width - 8} y={16} fill="var(--text-0)" fontSize={11} textAnchor="end" fontFamily="monospace">
@@ -75,10 +114,27 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
           </text>
         )}
       </svg>
+      {selectedQuery != null && topAttended && (
+        <div className="state-banner info" role="status">
+          <span>
+            <strong>{tokens[selectedQuery]}</strong> (query position {selectedQuery}) attends most to:{" "}
+            {topAttended.map(({ v, k }) => (
+              <span key={k} className="mono">
+                {tokens[k]} {v.toFixed(3)}
+                {k !== topAttended[topAttended.length - 1].k ? " · " : ""}
+              </span>
+            ))}
+            <span className="inspector-meta"> — measured, head {head}; the empty upper triangle is the causal mask</span>
+          </span>
+          <button className="ghost" onClick={() => setSelectedQuery(null)} aria-label="Clear token selection">
+            ✕
+          </button>
+        </div>
+      )}
       <div className="legend-scale">
         <span>0</span>
         <div className="legend-bar" style={{ background: "linear-gradient(90deg, rgb(43,48,45), rgb(223,121,90))" }} />
-        <span>attention weight 1.0 · rows sum to 1</span>
+        <span>attention weight 1.0 · rows sum to 1 · click a row token to inspect it</span>
         <span className="mono" style={{ marginLeft: "auto" }}>
           {att.hook} · head {head} · shape {att.shape.join("×")}
         </span>

@@ -98,6 +98,88 @@ const DEPTH_LABEL: Record<Depth, string> = {
   technical: "Technical",
 };
 
+/** "Neural Networks 101" — a conceptual, fully-connected feedforward example.
+ *  Deliberately NOT GPT-2: no token embeddings, no attention, no residual
+ *  stream. Every node value shown is an illustrative simulation. The point is
+ *  contrast: why transformers replaced plain dense stacks. */
+function Feedforward101() {
+  const [hoverNode, setHoverNode] = useState<number | null>(null);
+  const layers = [
+    { n: 3, label: "input", x: 50 },
+    { n: 4, label: "hidden 1", x: 150 },
+    { n: 4, label: "hidden 2", x: 250 },
+    { n: 2, label: "output", x: 350 },
+  ];
+  const pos = (l: number, i: number) => {
+    const layer = layers[l];
+    const gap = 44;
+    const y0 = 130 - ((layer.n - 1) * gap) / 2;
+    return { x: layer.x, y: y0 + i * gap };
+  };
+  const nodeOwner = (l: number, i: number) => l * 10 + i;
+  return (
+    <div>
+      <svg viewBox="0 0 420 260" width="100%" role="img" aria-label="Conceptual feedforward network: input, two hidden layers, output — fully connected">
+        {/* dense connections */}
+        {[0, 1, 2].map((l) =>
+          Array.from({ length: layers[l].n }, (_, i) =>
+            Array.from({ length: layers[l + 1].n }, (_, j) => {
+              const a = pos(l, i);
+              const b = pos(l + 1, j);
+              const mine =
+                hoverNode === nodeOwner(l, i) || hoverNode === nodeOwner(l + 1, j);
+              return (
+                <path
+                  key={`${l}-${i}-${j}`}
+                  d={`M ${a.x + 8} ${a.y} L ${b.x - 8} ${b.y}`}
+                  stroke={mine ? "var(--accent)" : "var(--line-1)"}
+                  strokeWidth={mine ? 1.6 : 0.7}
+                  opacity={mine ? 0.9 : 0.35}
+                  fill="none"
+                />
+              );
+            }),
+          ),
+        )}
+        {/* nodes */}
+        {layers.map((layer, l) =>
+          Array.from({ length: layer.n }, (_, i) => {
+            const p = pos(l, i);
+            const mine = hoverNode === nodeOwner(l, i);
+            return (
+              <circle
+                key={`n${l}-${i}`}
+                cx={p.x}
+                cy={p.y}
+                r={8}
+                fill={mine ? "var(--accent)" : "var(--bg-3)"}
+                stroke={mine ? "var(--accent)" : "var(--line-1)"}
+                style={{ cursor: "pointer" }}
+                onMouseEnter={() => setHoverNode(nodeOwner(l, i))}
+                onMouseLeave={() => setHoverNode(null)}
+              />
+            );
+          }),
+        )}
+        {layers.map((layer, l) => (
+          <text key={l} x={layer.x} y={230} fill="var(--text-2)" fontSize={10} textAnchor="middle">
+            {layer.label}
+          </text>
+        ))}
+        <text x={210} y={252} fill="var(--text-2)" fontSize={8.5} textAnchor="middle">
+          hover a node to trace its connections — illustrative structure, no real data
+        </text>
+      </svg>
+      <p className="inspector-meta">
+        <strong>Not GPT-2.</strong> This classic dense stack passes values forward layer by layer with no
+        memory of position and no shortcut paths. GPT-2 instead tokenizes text, uses attention so every
+        token can look at earlier tokens, and writes every result into one shared{" "}
+        <em>residual stream</em> — compare with the Model Explorer's canvas.
+      </p>
+    </div>
+  );
+}
+
 /** Small accurate contextual diagrams — schematic, labeled, no fake data. */
 function TopicDiagram({ term }: { term: string }) {
   const common = { fill: "none", stroke: "var(--line-1)" } as const;
@@ -236,6 +318,11 @@ export default function Learn() {
           <p style={{ color: "var(--text-1)" }}>{t[depth]}</p>
         </div>
       ))}
+
+      <div className="panel" style={{ borderColor: "var(--brass)" }}>
+        <h3>Neural Networks 101 — Conceptual Feedforward Example</h3>
+        <Feedforward101 />
+      </div>
 
       <div className="panel">
         <h3>Run it yourself</h3>
