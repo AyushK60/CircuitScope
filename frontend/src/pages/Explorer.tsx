@@ -18,7 +18,9 @@ type Mode = "anatomy" | "flow";
 const EXAMPLE = "The doctor asked the nurse to help her because she was tired.";
 
 export default function Explorer({ health }: { health: Health | null }) {
-  const [mode, setMode] = useState<Mode>("anatomy");
+  const [mode, setMode] = useState<Mode>(() =>
+    window.location.hash.includes("mode=flow") ? "flow" : "anatomy",
+  );
   const [level, setLevel] = useState<Level>("model");
   const [layer, setLayer] = useState<number>(5);
   const [head, setHead] = useState<number>(0);

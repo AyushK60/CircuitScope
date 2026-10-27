@@ -1,54 +1,72 @@
 # ATLAS FINAL AUDIT — release review, 2026-10-30
 
-Independent-reviewer pass over the completed transformation.
+Independent-reviewer pass after the transformation and visual-gate phases,
+including a second verification pass after defect fixes.
 
-## Would a first-time visitor understand the product?
+## Final acceptance gates
 
-Yes. The hero states the promise in one sentence, shows an accurate labeled
-schematic of the actual 12-block architecture (marked SCHEMATIC, pulse labeled
-as stage animation), and the live status chip proves a real model is running.
-Section 01 runs a genuine prediction on the page; sections 02–05 lead to real
-features, not marketing cards.
+| Gate | Verdict | Evidence |
+|---|---|---|
+| 1 Architecture accuracy | PASS | All 12 blocks strictly before Final LN → Unembed → Logits (explicit stage coordinates; E2E-asserted); residual bus taps correct; counts/dimensions from live metadata (12 blocks × 12 heads × d_model 768 × d_mlp 3072 × vocab 50,257) |
+| 2 Recognizable anatomy | PASS | ArchitectureCanvas: nodes, modules, typed edges (data / residual add / measured), 4 semantic levels; screenshots 02–04, 09 |
+| 3 Interaction quality | PASS | wheel zoom, drag pan, fit/reset, prev/next block, jump select, keyboard (↑↓/Enter/+/−/0), breadcrumbs, token selection; stable under repeated navigation (E2E re-runs) |
+| 4 Real measurements | PASS | heatmap + token readout from captured hook_pattern; flow norms/logits from one real pass; live token check: " nurse" pos 5 → asked 0.443 / BOS 0.440 (block 5 head 4) and BOS 0.781 (block 6) |
+| 5 Distinctive design | PASS | warm charcoal / porcelain / persimmon / brass / sage / lavender system on every screen; editorial serif + mono hierarchy; screenshots 01, 05, 07, 10 |
+| 6 Functional integrity | PASS | live prediction; 3-run intervention verified in-browser this audit (D 1.943, Δ 6.119, Recovery 0.915); exports return real CSV/JSON for the run's experiment ID |
+| 7 Browser verification | PASS | screenshots 01–10 captured & inspected; zero console errors through explorer drill-in + full experiment run; zero horizontal overflow at 320/390px on all four pages; 1920×1080 whole-model view fits one screen |
 
-## Is the interface distinctive?
+## Defects found and fixed during this audit
 
-The generic navy/teal dashboard is gone: warm charcoal ground, porcelain text,
-persimmon primary actions, brass structural numerals, sage measured signals,
-dusty-violet residual paths, lavender selection. Editorial serif display
-headings against mono technical annotations. Consistent across landing,
-explorer, playground, learn.
+1. **Landing CTA landed in the wrong mode** — "Watch a real computation flow →"
+   navigated to the Explorer's Anatomy tab. Fixed: Explorer accepts
+   `#/explorer?mode=flow`; CTA verified to open the playback (flowVisible true).
+2. (Carried from visual gate) token-level attention selection and the NN101
+   conceptual feedforward view were absent — both implemented and verified.
 
-## Is the centerpiece scientifically faithful?
+## Verification runs (second pass after fixes)
 
-- All 12 blocks execute strictly before Final LayerNorm → Unembed → Logits;
-  stage coordinates are explicit and covered by E2E assertions.
-- Residual stream is one continuous bus; every block reads and writes it —
-  adds, never replacement.
-- Attention anatomy distinguishes the 12 parallel head lanes from the combined
-  W_O path and labels each pipeline stage (QKᵀ/√64, causal mask, softmax, ΣV).
-- Measured overlays (residual norms, tokens, logits, heatmaps) render only
-  from /api/flow or /api/inspect of real runs, always tagged MEASURED with
-  hook ID, shape, aggregation.
-
-## Journey verification (browser + Playwright)
-
-Landing (live prediction) → Explorer whole model → block 5 anatomy →
-attention anatomy → head 4 measured heatmap → "Patch this block" →
-Playground (hook/position carried) → 3 real runs → D 1.943 / Δ 6.119 /
-Recovery 0.915 (matches independent raw-HF reference to 5e-3) → exports.
-9/9 E2E, 6/6 Vitest, 30/30 pytest, production build clean.
+- Backend: **30/30 pytest** (incl. reference agreement D 2.5128 / −4.1768 /
+  1.9426, Recovery 0.9148 vs raw-HF reference; no-op, leak, and immutability
+  controls).
+- Frontend unit: **7/7 Vitest**.
+- Browser E2E: **9/9 Playwright** (landing live prediction; model → block →
+  attention → head journey; explorer→playground handoff; full experiment with
+  exports; learn depths; 320px no-overflow; flow playback with honest timing;
+  measured residual norms; zero console errors).
+- Production build: clean.
+- Export endpoints verified live: CSV rows match the in-browser run
+  (clean #0 ' Mary' logit −65.28 prob 0.662).
 
 ## Screenshots (docs/screenshots/)
 
 01 landing hero · 02 whole-model canvas · 03 block-5 anatomy ·
 04 head-4 measured heatmap · 05 playground configuration (target strip) ·
-06 playground results · 07 learn · 08 explorer at 320px.
+06 playground results · 07 learn · 08 explorer at 320px ·
+09 head-4 with token selected · 10 Neural Networks 101 conceptual view.
 
-## Anything still prototype-grade?
+## Remaining defects (documented, non-blocking)
 
-- The attention-anatomy arrow routing is serviceable rather than beautiful.
-- Experiment history has persistence but no browse UI.
-- GPU inference remains unexercised (CPU-only torch build).
+1. CPU-only torch build — GPU inference path untested (RTX 5050 needs a cu128
+   wheel; backend auto-selects cuda when available).
+2. Experiment history: SQLite persistence + exports exist, no browse UI.
+3. No PNG chart export (JSON + CSV only).
+4. Attention-anatomy arrow routing is serviceable rather than beautiful at
+   very narrow widths.
+5. Flow playback stage pacing is fixed presentation timing (labeled as such),
+   not measured latency.
 
-None of these conceal a scientific defect; all are documented as deferred work
-in ATLAS_PROGRESS.md. All P0 truthfulness gates from the original README hold.
+## Startup commands
+
+```bat
+:: from E:\CircuitScope
+.venv\Scripts\python -m backend.app.main     :: http://127.0.0.1:8000 (API docs at /docs)
+cd frontend && npm run dev                    :: http://localhost:5173
+```
+
+Tests:
+
+```bat
+.venv\Scripts\python -m pytest backend\tests -q
+.venv\Scripts\python scripts\reference_patch.py
+cd frontend && npx vitest run && npx playwright test   :: needs both servers up
+```

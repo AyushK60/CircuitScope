@@ -256,7 +256,9 @@ export default function Landing({
         <p className="schematic-note">
           The replay is built from one recorded execution; stage pacing is presentation, never GPU timing.
         </p>
-        <button onClick={() => navigate("explorer")}>Watch a real computation flow →</button>
+        <button onClick={() => { window.location.hash = "#/explorer?mode=flow"; }}>
+          Watch a real computation flow →
+        </button>
       </section>
 
       {/* ============ SECTION 3: CHANGE AN ACTIVATION ============ */}
