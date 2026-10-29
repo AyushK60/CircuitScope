@@ -128,6 +128,60 @@ def capture_flow(text: str) -> dict:
     }
 
 
+def continue_text(text: str, n_tokens: int = 5) -> dict:
+    """Greedy continuation: run the real model, append its top token, repeat.
+
+    Every step records the measured top candidates at that position. This is
+    deterministic greedy decoding (no sampling), bounded to n_tokens steps.
+    """
+    if not 1 <= n_tokens <= 8:
+        raise InterventionError("n_tokens must be in [1, 8]")
+    bridge = ADAPTER.bridge()
+    current = text
+    steps = []
+    t0 = time.perf_counter()
+    for i in range(n_tokens):
+        toks = bridge.to_tokens(current)
+        if toks.shape[1] >= MAX_CAPTURE_TOKENS:
+            raise InterventionError("continuation exceeded the token limit")
+        logits = bridge(toks)
+        top = topk_predictions(logits, 5)
+        chosen = top[0]
+        steps.append(
+            {
+                "step": i + 1,
+                "input_so_far": current,
+                "chosen": chosen["token"],
+                "chosen_id": chosen["token_id"],
+                "chosen_prob": round(chosen["prob"], 5),
+                "top_predictions": top,
+            }
+        )
+        current = current + chosen["token"]
+    return {
+        "text_start": text,
+        "text_final": current,
+        "n_tokens": n_tokens,
+        "steps": steps,
+        "elapsed_seconds": round(time.perf_counter() - t0, 4),
+        "decoding": "greedy (argmax) — deterministic, no sampling",
+    }
+
+
+def compare_candidates(logits: torch.Tensor, token_a: int, token_b: int) -> dict:
+    """Measured candidate comparison at the final position."""
+    last = logits[0, -1]
+    probs = torch.softmax(last, dim=-1)
+    d = float(last[token_a] - last[token_b])
+    return {
+        "logit_a": float(last[token_a]),
+        "logit_b": float(last[token_b]),
+        "prob_a": float(probs[token_a]),
+        "prob_b": float(probs[token_b]),
+        "D": round(d, 5),
+    }
+
+
 def attention_pattern(text: str, layer: int) -> dict:
     """Full attention pattern [n_heads, seq, seq] for one layer, as lists."""
     if not 0 <= layer < ADAPTER.metadata()["n_layers"]:

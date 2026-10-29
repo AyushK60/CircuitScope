@@ -23,6 +23,24 @@ honest gate-by-gate status and docs/DECISIONS.md for design decisions.
 - **Responsive fixes** — labels no longer overlap inline controls; SVG
   diagrams are viewBox-scalable (320px verified, overflow ≤ 2px).
 
+## Extension release (this session)
+
+- **/api/continue** — deterministic greedy GPT-2 continuation (1–8 tokens,
+  measured per-step candidates; pytest-verified deterministic).
+- **/api/predict candidates** — optional measured candidate comparison (D,
+  probabilities) on any prompt; multi-token candidates rejected honestly.
+- **Neural Network Lab** (#/lab) — a genuine 2-8-8-1 MLP trained live in the
+  browser (real gradient descent, two-moons): loss curve, decision boundary,
+  per-node activations, probe inspection. Clearly labeled as an educational
+  simulation, not GPT-2.
+- **Playground**: editable candidate A/B with live measured comparison card;
+  four-step guided experiment wizard; greedy continuation panel; persisted
+  experiment history panel (load past results).
+- **Explorer**: intervention overlay (hook + position marked on the canvas
+  from URL params, synced with Playground), all-heads attention gallery
+  (small multiples of every measured pattern in a block).
+- Tests: 35 pytest · 7 Vitest · 13 E2E · production build — all passing.
+
 ## What works right now
 
 - **Backend** (`backend/`): GPT-2 Small loads via TransformerLens 4.3.0

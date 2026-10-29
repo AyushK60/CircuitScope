@@ -26,6 +26,13 @@ router = APIRouter(prefix="/api")
 class PredictRequest(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_PROMPT_CHARS)
     top_k: int = Field(default=8, ge=1, le=20)
+    candidate_a: str | None = Field(default=None, max_length=32)
+    candidate_b: str | None = Field(default=None, max_length=32)
+
+
+class ContinueRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=MAX_PROMPT_CHARS)
+    n_tokens: int = Field(default=5, ge=1, le=8)
 
 
 class InspectRequest(BaseModel):
@@ -68,7 +75,36 @@ def predict(req: PredictRequest) -> dict:
         meta = ADAPTER.metadata()
         tok = ADAPTER.tokenize(req.text)
         pred = engine.predict(req.text, req.top_k)
-        return {"model": meta, "tokenization": tok, "prediction": pred}
+        response = {"model": meta, "tokenization": tok, "prediction": pred}
+        # optional measured candidate comparison (both must be single tokens)
+        if req.candidate_a and req.candidate_b:
+            try:
+                id_a = ADAPTER.token_id_for_str(req.candidate_a)
+                id_b = ADAPTER.token_id_for_str(req.candidate_b)
+                import torch
+
+                bridge = ADAPTER.bridge()
+                logits = bridge(bridge.to_tokens(req.text))
+                response["comparison"] = {
+                    **engine.compare_candidates(logits, id_a, id_b),
+                    "candidate_a": req.candidate_a,
+                    "candidate_b": req.candidate_b,
+                    "sign_convention": "positive D means candidate A scores above candidate B at the final position",
+                }
+            except ValueError as e:
+                response["comparison_error"] = str(e)
+        return response
+    except ModelNotLoadedError:
+        raise HTTPException(status_code=503, detail="model not loaded yet")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
+
+
+@router.post("/continue")
+def continue_text(req: ContinueRequest) -> dict:
+    try:
+        meta = ADAPTER.metadata()
+        return {"model": meta, **engine.continue_text(req.text, req.n_tokens)}
     except ModelNotLoadedError:
         raise HTTPException(status_code=503, detail="model not loaded yet")
     except Exception as e:

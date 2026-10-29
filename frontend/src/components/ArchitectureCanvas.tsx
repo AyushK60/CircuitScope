@@ -47,6 +47,7 @@ export default function ArchitectureCanvas({
   onLayer,
   onHead,
   keyboardFocusLayer,
+  intervention,
 }: {
   meta: ModelMeta;
   flow: FlowData | null;
@@ -56,6 +57,7 @@ export default function ArchitectureCanvas({
   onLayer: (l: number) => void;
   onHead: (head: number) => void;
   keyboardFocusLayer: number;
+  intervention?: { hook: string; position: number } | null;
 }) {
   const [cam, setCam] = useState<Cam>(() => fitCam());
   const [dragging, setDragging] = useState(false);
@@ -211,6 +213,7 @@ export default function ArchitectureCanvas({
               onEnterBlock={enterBlock}
               setHover={setHover}
               setHoverClear={() => setHover(null)}
+              intervention={intervention}
             />
           )}
           {level === "block" && (
@@ -325,6 +328,7 @@ function ModelLevel({
   onEnterBlock,
   setHover,
   setHoverClear,
+  intervention,
 }: {
   meta: ModelMeta;
   flow: FlowData | null;
@@ -333,7 +337,9 @@ function ModelLevel({
   onEnterBlock: (l: number) => void;
   setHover: HoverFn;
   setHoverClear: () => void;
+  intervention?: { hook: string; position: number } | null;
 }) {
+  const targetLayer = intervention ? Number((intervention.hook.match(/blocks\.(\d+)\./) ?? [])[1] ?? -1) : -1;
   const busX = 108;
   const modX = 210;
   const modW = 430;
@@ -355,7 +361,7 @@ function ModelLevel({
       <text x={modX} y={40} fill="var(--text-2)" fontSize={11}>
         {flow ? `your sentence — ${flow.tokens.length} tokens received by the model` : "your sentence"}
       </text>
-      <TokenStrip flow={flow} y={54} x={modX} />
+      <TokenStrip flow={flow} y={54} x={modX} markedPosition={intervention?.position} />
 
       {/* stage 2: tokenizer */}
       {stageNum(146, "2", "tokenize")}
@@ -439,6 +445,15 @@ function ModelLevel({
             <text x={modX + modW - 12} y={by + 22} fill="var(--text-2)" fontSize={10} textAnchor="end">
               ⊕ ⊕
             </text>
+            {/* synchronized intervention overlay from the Playground */}
+            {intervention && l === targetLayer && (
+              <g>
+                <rect x={modX - 3} y={by - 3} width={modW + 6} height={BLOCK_H + 6} rx={11} fill="none" stroke="var(--brass)" strokeWidth={2} strokeDasharray="6 4" />
+                <text x={modX + modW / 2} y={by - 9} fill="var(--brass)" fontSize={9.5} textAnchor="middle" fontFamily="var(--font-mono)">
+                  INTERVENTION TARGET · {intervention.hook} @ pos {intervention.position}
+                </text>
+              </g>
+            )}
             {/* measured norm overlay */}
             {norm != null && (
               <g>
@@ -499,7 +514,7 @@ function StageBand({ x, y, w, title, sub }: { x: number; y: number; w: number; t
   );
 }
 
-function TokenStrip({ flow, x, y }: { flow: FlowData | null; x: number; y: number }) {
+function TokenStrip({ flow, x, y, markedPosition }: { flow: FlowData | null; x: number; y: number; markedPosition?: number }) {
   const tokens = flow?.tokens ?? [];
   if (tokens.length === 0) {
     return (
@@ -515,9 +530,10 @@ function TokenStrip({ flow, x, y }: { flow: FlowData | null; x: number; y: numbe
       {tokens.map((t, i) => {
         const row = Math.floor(i / perRow);
         const col = i % perRow;
+        const marked = markedPosition === i;
         return (
           <g key={i}>
-            <rect x={x + col * 50} y={y + row * 22} width={46} height={18} rx={3} fill="var(--bg-2)" stroke="var(--line-0)" />
+            <rect x={x + col * 50} y={y + row * 22} width={46} height={18} rx={3} fill={marked ? "#3a2c1c" : "var(--bg-2)"} stroke={marked ? "var(--brass)" : "var(--line-0)"} />
             <text x={x + col * 50 + 23} y={y + row * 22 + 13} fill="var(--text-1)" fontSize={8.5} textAnchor="middle">
               {t.length > 8 ? t.slice(0, 8) : t}
             </text>

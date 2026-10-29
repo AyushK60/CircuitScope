@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
   api,
+  type ContinueResult,
   type ExperimentRecord,
   type Health,
   type Prediction,
+  type SavedExperiment,
   type Tokenization,
 } from "../api/client";
 import TokenRow from "../components/TokenRow";
@@ -117,6 +119,15 @@ export default function Playground({ health }: { health: Health | null }) {
   const [tokenization, setTokenization] = useState<Tokenization | null>(null);
   const [baseline, setBaseline] = useState<Prediction | null>(null);
 
+  const [candA, setCandA] = useState(PRESET.candidate_a);
+  const [candB, setCandB] = useState(PRESET.candidate_b);
+  const [comparison, setComparison] = useState<{ D: number; prob_a: number; prob_b: number } | null>(null);
+  const [comparisonError, setComparisonError] = useState<string | null>(null);
+  const [contResult, setContResult] = useState<ContinueResult | null>(null);
+  const [contBusy, setContBusy] = useState(false);
+  const [wizardStep, setWizardStep] = useState(0);
+  const [history, setHistory] = useState<SavedExperiment[]>([]);
+
   const [jobId, setJobId] = useState<string | null>(null);
   const [record, setRecord] = useState<ExperimentRecord | null>(null);
   const [runState, setRunState] = useState<RunState>("idle");
@@ -128,15 +139,17 @@ export default function Playground({ health }: { health: Health | null }) {
     if (!ready) return;
     const t = setTimeout(() => {
       api
-        .predict(clean, 6)
+        .predict(clean, 6, candA, candB)
         .then((r) => {
           setTokenization(r.tokenization);
           setBaseline(r.prediction);
+          setComparison(r.comparison ? { D: r.comparison.D, prob_a: r.comparison.prob_a, prob_b: r.comparison.prob_b } : null);
+          setComparisonError(r.comparison_error ?? null);
         })
         .catch(() => {});
     }, 350);
     return () => clearTimeout(t);
-  }, [clean, ready]);
+  }, [clean, candA, candB, ready]);
 
   // poll experiment status while active
   useEffect(() => {
@@ -146,7 +159,10 @@ export default function Playground({ health }: { health: Health | null }) {
         .experiment(jobId)
         .then((r) => {
           setRecord(r);
-          if (r.status === "complete") setRunState("complete");
+          if (r.status === "complete") {
+            setRunState("complete");
+            api.listExperiments().then((lr) => setHistory(lr.saved.filter((x) => x.status === "complete").slice(0, 10))).catch(() => {});
+          }
           if (r.status === "failed" || r.status === "cancelled") setRunState(r.status);
         })
         .catch((e) => {
@@ -170,14 +186,45 @@ export default function Playground({ health }: { health: Health | null }) {
         hook,
         positions: [position],
         heads: hook.endsWith("hook_z") ? null : null,
-        candidate_a: PRESET.candidate_a,
-        candidate_b: PRESET.candidate_b,
+        candidate_a: candA,
+        candidate_b: candB,
       })
       .then((r) => setJobId(r.job_id))
       .catch((e) => {
         setError(String(e.message ?? e));
         setRunState("failed");
       });
+  };
+
+  const refreshHistory = () => {
+    api
+      .listExperiments()
+      .then((r) => setHistory(r.saved.filter((x) => x.status === "complete").slice(0, 10)))
+      .catch(() => {});
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(refreshHistory, [ready]);
+
+  const loadSaved = (id: string) => {
+    api
+      .getSavedExperiment(id)
+      .then((r) => {
+        if (r.results) {
+          setRecord({ ...r, status: "complete" as const, error: r.error ?? null });
+          setJobId(id);
+          setRunState("complete");
+        }
+      })
+      .catch((e) => setError(String(e.message ?? e)));
+  };
+
+  const runContinuation = () => {
+    setContBusy(true);
+    api
+      .continue(clean, 5)
+      .then(setContResult)
+      .catch((e) => setError(String(e.message ?? e)))
+      .finally(() => setContBusy(false));
   };
 
   const res = record?.results ?? null;
@@ -195,6 +242,65 @@ export default function Playground({ health }: { health: Health | null }) {
       {!ready && (
         <div className="state-banner info" style={{ marginBottom: "1rem" }}>
           <span className="spinner" aria-hidden /> Waiting for the model. Experiments need the loaded weights.
+        </div>
+      )}
+
+      {ready && (
+        <div className="panel" style={{ borderColor: "var(--brass)" }}>
+          <h2>Guided experiment</h2>
+          <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
+            A four-step walkthrough of one complete intervention. Each step uses the same real controls
+            below — nothing is simulated.
+          </p>
+          <div className="wizard-steps">
+            {[
+              { n: 1, label: "Predict", done: comparison != null || comparisonError != null },
+              { n: 2, label: "Inspect", done: wizardStep > 1 },
+              { n: 3, label: "Patch", done: runState === "complete" },
+              { n: 4, label: "Compare", done: runState === "complete" && wizardStep > 3 },
+            ].map((s, i) => (
+              <button
+                key={s.n}
+                className={`wizard-step${wizardStep === i ? " active" : s.done ? " done" : ""}`}
+                onClick={() => {
+                  setWizardStep(i);
+                  if (i === 3 && runState !== "complete") runExperiment();
+                  if (i === 0) {
+                    api.predict(clean, 6, candA, candB).catch(() => {});
+                  }
+                }}
+              >
+                <span className="wizard-num">{s.n}</span> {s.label}
+              </button>
+            ))}
+          </div>
+          {wizardStep === 0 && (
+            <p className="inspector-meta">
+              Step 1 — the live comparison below (updated as you type) shows the model's measured
+              preference between candidates A and B on the clean prompt. When you can read D, continue.
+            </p>
+          )}
+          {wizardStep === 1 && (
+            <p className="inspector-meta">
+              Step 2 — open the block you plan to patch in the Model Explorer to see its real attention
+              patterns:{" "}
+              <a href={`#/explorer?mode=flow`}>
+                <button>Inspect block {parseInt(hook.replace(/[^0-9]/g, "")) || 5} →</button>
+              </a>
+            </p>
+          )}
+          {wizardStep === 2 && (
+            <p className="inspector-meta">
+              Step 3 — run the patch: three real forward passes (clean capture, corrupted, patched). Press
+              "Run experiment" below if you have not already.
+            </p>
+          )}
+          {wizardStep === 3 && (
+            <p className="inspector-meta">
+              Step 4 — read the comparison: clean vs corrupted vs patched D, the patch effect Δ, and the
+              unclamped recovery. Include no-effect results as they measure.
+            </p>
+          )}
         </div>
       )}
 
@@ -227,10 +333,23 @@ export default function Playground({ health }: { health: Health | null }) {
               value={corrupted}
               onChange={(e) => setCorrupted(e.target.value)}
             />
-            <p className="inspector-meta">
-              Candidates: <span className="mono">{PRESET.candidate_a}</span> (A) vs{" "}
-              <span className="mono">{PRESET.candidate_b}</span> (B) — validated as single tokens by the
-              backend before every run.
+            <div className="grid-2" style={{ marginTop: "0.8rem" }}>
+              <div>
+                <label htmlFor="cand-a" style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>
+                  Candidate A
+                </label>
+                <input id="cand-a" type="text" value={candA} onChange={(e) => setCandA(e.target.value)} />
+              </div>
+              <div>
+                <label htmlFor="cand-b" style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>
+                  Candidate B
+                </label>
+                <input id="cand-b" type="text" value={candB} onChange={(e) => setCandB(e.target.value)} />
+              </div>
+            </div>
+            <p className="inspector-meta" style={{ marginTop: "0.4rem" }}>
+              Validated as single tokens by the backend (leading spaces matter). Live comparison below
+              updates as you type.
             </p>
           </div>
           <div>
@@ -263,6 +382,30 @@ export default function Playground({ health }: { health: Health | null }) {
             </select>
             <h3 style={{ marginTop: "0.9rem" }}>Clean tokens (positions shown)</h3>
             <TokenRow tok={tokenization} highlightPositions={[position]} />
+            {comparisonError && (
+              <div className="state-banner warn" style={{ marginTop: "0.8rem" }}>
+                Candidate comparison unavailable: {comparisonError}
+              </div>
+            )}
+            {comparison && (
+              <div className="metric-cards" style={{ marginTop: "0.8rem" }}>
+                <div className="metric-card">
+                  <div className="name">D · logit(A) − logit(B)</div>
+                  <div className="value">{comparison.D.toFixed(3)}</div>
+                  <div className="sub">positive = A preferred at the final position</div>
+                </div>
+                <div className="metric-card">
+                  <div className="name">P(A) · {JSON.stringify(candA)}</div>
+                  <div className="value">{(comparison.prob_a * 100).toFixed(2)}%</div>
+                  <div className="sub">measured probability on the clean prompt</div>
+                </div>
+                <div className="metric-card">
+                  <div className="name">P(B) · {JSON.stringify(candB)}</div>
+                  <div className="value">{(comparison.prob_b * 100).toFixed(2)}%</div>
+                  <div className="sub">measured probability on the clean prompt</div>
+                </div>
+              </div>
+            )}
             <div style={{ marginTop: "0.9rem", display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
               <button className="primary" onClick={runExperiment} disabled={!ready || runState === "running"}>
                 {runState === "running" ? "Running 3 model passes…" : "Run experiment (clean + corrupted + patched)"}
@@ -406,6 +549,73 @@ export default function Playground({ health }: { health: Health | null }) {
           <div className="state-banner warn">Experiment cancelled before completion. Nothing was saved.</div>
         </div>
       )}
+
+      <div className="panel">
+        <h2>Custom prediction & continuation</h2>
+        <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
+          Continue any prompt with deterministic greedy decoding — the model appends its top token, then
+          re-runs, up to 8 steps. Each step records the measured top candidates.
+        </p>
+        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+          <button className="primary" onClick={runContinuation} disabled={!ready || contBusy}>
+            {contBusy ? "Generating…" : "Continue the clean prompt by 5 tokens"}
+          </button>
+          {contResult && (
+            <span className="inspector-meta mono">
+              {contResult.decoding} · {contResult.elapsed_seconds.toFixed(2)} s
+            </span>
+          )}
+        </div>
+        {contResult && (
+          <div style={{ marginTop: "0.8rem" }}>
+            <p className="mono" style={{ fontSize: "0.95rem", background: "var(--bg-2)", padding: "0.6rem 0.8rem", borderRadius: 6 }}>
+              {contResult.text_start}
+              {contResult.steps.map((s) => (
+                <span key={s.step} title={`step ${s.step}: p=${s.chosen_prob}`} style={{ color: "var(--accent)" }}>
+                  {s.chosen}
+                </span>
+              ))}
+            </p>
+            <p className="inspector-meta">
+              {contResult.steps.map((s) => (
+                <span key={s.step} style={{ marginRight: "0.9rem" }}>
+                  step {s.step}: {JSON.stringify(s.chosen)} p={s.chosen_prob.toFixed(3)}
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="panel">
+        <h2>Experiment history</h2>
+        <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
+          Completed experiments persisted in the local database. Loading one restores its exact stored
+          results (config, metrics, provenance).
+        </p>
+        {history.length === 0 ? (
+          <p className="inspector-meta">No completed experiments yet — run one above.</p>
+        ) : (
+          <div className="table-scroll">
+          <table className="kv-table">
+            <tbody>
+              {history.map((h) => (
+                <tr key={h.id}>
+                  <td>{new Date(h.created_at * 1000).toLocaleTimeString()}</td>
+                  <td>{String((h.config as Record<string, unknown>).hook ?? "")}</td>
+                  <td>
+                    pos {JSON.stringify((h.config as Record<string, unknown>).positions ?? [])}
+                  </td>
+                  <td>
+                    <button onClick={() => loadSaved(h.id)}>Load results</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          </div>
+        )}
+      </div>
 
       <div className="panel">
         <h2>Baseline (live, clean prompt)</h2>

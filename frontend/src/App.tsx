@@ -4,12 +4,13 @@ import Landing from "./pages/Landing";
 import Explorer from "./pages/Explorer";
 import Playground from "./pages/Playground";
 import Learn from "./pages/Learn";
+import NeuralLab from "./pages/NeuralLab";
 
-type Route = "landing" | "explorer" | "playground" | "learn";
+type Route = "landing" | "explorer" | "playground" | "learn" | "lab";
 
 function currentRoute(): Route {
   const h = window.location.hash.replace("#/", "").split("?")[0];
-  return (["explorer", "playground", "learn"].includes(h) ? h : "landing") as Route;
+  return (["explorer", "playground", "learn", "lab"].includes(h) ? h : "landing") as Route;
 }
 
 export default function App() {
@@ -65,7 +66,7 @@ export default function App() {
           <span className="scope">⊙</span> CircuitScope
         </a>
         <nav className="nav" aria-label="Main">
-          {(["explorer", "playground", "learn"] as Route[]).map((r) => (
+          {(["explorer", "playground", "learn", "lab"] as Route[]).map((r) => (
             <a
               key={r}
               href={`#/${r}`}
@@ -75,7 +76,7 @@ export default function App() {
                 navigate(r);
               }}
             >
-              {r === "explorer" ? "Model Explorer" : r === "playground" ? "Intervention Playground" : "Learn"}
+              {r === "explorer" ? "Model Explorer" : r === "playground" ? "Intervention Playground" : r === "lab" ? "NN Lab" : "Learn"}
             </a>
           ))}
         </nav>
@@ -102,6 +103,7 @@ export default function App() {
       {route === "explorer" && <Explorer health={health} />}
       {route === "playground" && <Playground health={health} />}
       {route === "learn" && <Learn />}
+      {route === "lab" && <NeuralLab />}
 
       <footer className="site-footer">
         CircuitScope — a local-first neural network observatory. GPT-2 Small runs entirely on this machine;

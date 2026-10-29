@@ -56,6 +56,47 @@ export interface FlowData {
   top_predictions: Candidate[];
 }
 
+export interface CandidateComparison {
+  logit_a: number;
+  logit_b: number;
+  prob_a: number;
+  prob_b: number;
+  D: number;
+  candidate_a: string;
+  candidate_b: string;
+  sign_convention: string;
+}
+
+export interface ContinueStep {
+  step: number;
+  input_so_far: string;
+  chosen: string;
+  chosen_id: number;
+  chosen_prob: number;
+  top_predictions: Candidate[];
+}
+
+export interface ContinueResult {
+  text_start: string;
+  text_final: string;
+  n_tokens: number;
+  steps: ContinueStep[];
+  elapsed_seconds: number;
+  decoding: string;
+}
+
+export interface SavedExperiment {
+  id: string;
+  created_at: number;
+  status: string;
+  config: Record<string, unknown>;
+  error?: string | null;
+}
+
+export interface SavedExperimentFull extends SavedExperiment {
+  results: ExperimentResult | null;
+}
+
 export interface AttentionPattern {
   hook: string;
   shape: number[];
@@ -132,11 +173,26 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => call<Health>("/api/health"),
-  predict: (text: string, topK = 8) =>
-    call<{ model: ModelMeta; tokenization: Tokenization; prediction: Prediction }>("/api/predict", {
+  predict: (text: string, topK = 8, candidateA?: string, candidateB?: string) =>
+    call<{ model: ModelMeta; tokenization: Tokenization; prediction: Prediction; comparison?: CandidateComparison; comparison_error?: string }>(
+      "/api/predict",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          text,
+          top_k: topK,
+          ...(candidateA && candidateB ? { candidate_a: candidateA, candidate_b: candidateB } : {}),
+        }),
+      },
+    ),
+  continue: (text: string, nTokens = 5) =>
+    call<{ model: ModelMeta } & ContinueResult>("/api/continue", {
       method: "POST",
-      body: JSON.stringify({ text, top_k: topK }),
+      body: JSON.stringify({ text, n_tokens: nTokens }),
     }),
+  listExperiments: () =>
+    call<{ jobs: string[]; saved: SavedExperiment[] }>("/api/experiments"),
+  getSavedExperiment: (id: string) => call<SavedExperimentFull>(`/api/experiments/${id}`),
   inspect: (text: string, layer: number) =>
     call<{ tokenization: Tokenization; attention?: AttentionPattern; attention_error?: string }>(
       "/api/inspect",

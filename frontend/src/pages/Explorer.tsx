@@ -18,17 +18,23 @@ type Mode = "anatomy" | "flow";
 const EXAMPLE = "The doctor asked the nurse to help her because she was tired.";
 
 export default function Explorer({ health }: { health: Health | null }) {
+  const params = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? ""), []);
   const [mode, setMode] = useState<Mode>(() =>
     window.location.hash.includes("mode=flow") ? "flow" : "anatomy",
   );
   const [level, setLevel] = useState<Level>("model");
-  const [layer, setLayer] = useState<number>(5);
+  const initialHook = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("hook"), []);
+  const [layer, setLayer] = useState<number>(() => {
+    const m = initialHook?.match(/blocks\.(\d+)\./);
+    return m ? Math.min(11, Math.max(0, Number(m[1]))) : 5;
+  });
   const [head, setHead] = useState<number>(0);
   const [text, setText] = useState(EXAMPLE);
   const [runText, setRunText] = useState(EXAMPLE);
   const [tokenization, setTokenization] = useState<Tokenization | null>(null);
   const [attention, setAttention] = useState<AttentionPattern | null>(null);
   const [flow, setFlow] = useState<FlowData | null>(null);
+  const [intervention, setIntervention] = useState<{ hook: string; position: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -45,6 +51,11 @@ export default function Explorer({ health }: { health: Health | null }) {
         if (insp.attention) setAttention(insp.attention);
         if (insp.attention_error) setError(insp.attention_error);
         setFlow(fl);
+        const hk = params.get("hook");
+        const pos = params.get("position");
+        if (hk && pos != null && !Number.isNaN(Number(pos))) {
+          setIntervention({ hook: hk, position: Number(pos) });
+        }
       })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setBusy(false));
@@ -147,6 +158,18 @@ export default function Explorer({ health }: { health: Health | null }) {
           <FlowPlayback flow={flow} />
         </div>
       ) : (
+        <>
+        {intervention && (
+          <div className="state-banner warn" style={{ marginTop: "1rem" }} role="status">
+            <span>
+              <strong>Intervention overlay:</strong> {intervention.hook} at token position{" "}
+              {intervention.position} is marked on the canvas (dashed brass box).{" "}
+              <a href={`#/playground?hook=${encodeURIComponent(intervention.hook)}&position=${intervention.position}`}>
+                Open it in the Playground →
+              </a>
+            </span>
+          </div>
+        )}
         <div className="explorer-grid" style={{ alignItems: "start", marginTop: "1rem" }}>
           <div className="panel" style={{ padding: "0.6rem" }}>
             <ArchitectureCanvas
@@ -155,6 +178,7 @@ export default function Explorer({ health }: { health: Health | null }) {
               level={level === "head" ? "attn" : (level as CanvasLevel)}
               layer={layer}
               keyboardFocusLayer={layer}
+              intervention={intervention}
               onLevel={(l) => setLevel(l)}
               onLayer={(l) => setLayer(l)}
               onHead={(h) => {
@@ -177,6 +201,7 @@ export default function Explorer({ health }: { health: Health | null }) {
             />
           </div>
         </div>
+        </>
       )}
     </main>
   );
@@ -263,6 +288,8 @@ function InspectorConsole({
           Per head: A = softmax(QKᵀ/√{meta.d_head} + mask), out = A·V. Heads are parallel lanes; the
           combined output is concat({meta.n_heads}×{meta.d_head}) → W_O.
         </p>
+        <h3 style={{ marginTop: "1rem" }}>All heads of this block (measured)</h3>
+        <HeadGallery flow={flow} layer={layer} onSelect={onHead} />
         <h3 style={{ marginTop: "1rem" }}>Select a head</h3>
         <HeadGrid nHeads={meta.n_heads} selected={head} onSelect={onHead} />
         <p className="inspector-meta" style={{ marginTop: "0.6rem" }}>
@@ -277,6 +304,8 @@ function InspectorConsole({
     <>
       <h3>Head {head} of block {layer}</h3>
       <AttentionHeatmap att={attention} head={head} />
+      <h3 style={{ marginTop: "0.8rem" }}>All heads of this block (measured)</h3>
+      <HeadGallery flow={flow} layer={layer} onSelect={onHead} />
       <div style={{ marginTop: "0.8rem" }}>
         <HeadGrid nHeads={meta.n_heads} selected={head} onSelect={onHead} />
       </div>
@@ -383,6 +412,63 @@ function HeadGrid({
           </text>
         </g>
       ))}
+    </svg>
+  );
+}
+
+/** Small multiples: the real attention pattern of every head in one block,
+ *  from the captured flow run. Click to open a head at full size. */
+function HeadGallery({
+  flow,
+  layer,
+  onSelect,
+}: {
+  flow: FlowData | null;
+  layer: number;
+  onSelect: (h: number) => void;
+}) {
+  if (!flow) return <div className="skeleton" style={{ height: "10rem" }} />;
+  const cell = 17;
+  const pattern = flow.blocks[layer].attention;
+  return (
+    <svg
+      width={12 * (cell + 8)}
+      height={Math.ceil(pattern.length) * (cell + 10)}
+      role="group"
+      aria-label={`Measured attention patterns of all ${pattern.length} heads of block ${layer}`}
+    >
+      {pattern.map((head, h) => {
+        const ox = (h % 6) * (cell + 8);
+        const oy = Math.floor(h / 6) * (cell + 10) + 4;
+        const px = (v: number) => {
+          const t = Math.max(0, Math.min(1, v));
+          return `rgb(${Math.round(43 + t * 180)},${Math.round(48 + t * 73)},${Math.round(45 + t * 45)})`;
+        };
+        const n = head.length;
+        const cs = cell / n;
+        return (
+          <g
+            key={h}
+            className="head-cell"
+            onClick={() => onSelect(h)}
+            tabIndex={0}
+            role="button"
+            aria-label={`Open head ${h}`}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSelect(h);
+            }}
+          >
+            {head.map((row, q) =>
+              row.map((v, k) => (
+                <rect key={`${q}-${k}`} x={ox + k * cs} y={oy + q * cs} width={cs} height={cs} fill={px(v)} />
+              )),
+            )}
+            <text x={ox + cell / 2} y={oy + cell + 8} fill="var(--text-2)" fontSize={7.5} textAnchor="middle">
+              H{h}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }

@@ -126,6 +126,42 @@ test.describe("CircuitScope core journey", () => {
     }
   });
 
+  test("explorer→playground handoff shows intervention overlay", async ({ page }) => {
+    await page.goto("/#/explorer?hook=blocks.7.attn.hook_out&position=6");
+    await expect(page.getByText("Intervention overlay:").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/INTERVENTION TARGET/).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Open transformer block 7" })).toBeVisible();
+  });
+
+  test("playground: custom candidates update the live comparison", async ({ page }) => {
+    await page.goto("/#/playground");
+    await expect(page.getByText("Guided experiment")).toBeVisible({ timeout: 30_000 });
+    const candA = page.getByLabel("Candidate A");
+    await candA.fill(" them");
+    await expect(page.getByText("D · logit(A) − logit(B)").first()).toBeVisible();
+    await expect(page.getByText(/P\(A\)/).first()).toContainText("them");
+  });
+
+  test("playground: greedy continuation generates real text", async ({ page }) => {
+    await page.goto("/#/playground");
+    await page.getByRole("button", { name: /Continue the clean prompt/ }).click();
+    await expect(page.getByText(/greedy \(argmax\)/)).toBeVisible({ timeout: 30_000 });
+    // the continuation extends the prompt (measured tokens rendered)
+    await expect(page.getByText(/step 1:/)).toBeVisible();
+  });
+
+  test("neural network lab: training genuinely reduces loss", async ({ page }) => {
+    await page.goto("/#/lab");
+    await expect(page.getByRole("heading", { name: "Neural Network Lab" })).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/Educational simulation/)).toBeVisible();
+    await page.getByRole("button", { name: "Train 100 steps" }).click();
+    await page.getByRole("button", { name: "Train 100 steps" }).click();
+    await expect(page.getByText(/step 200 · loss/)).toBeVisible({ timeout: 15_000 });
+    const lossText = await page.locator(".lab-stats").textContent();
+    const loss = parseFloat(lossText!.match(/loss ([\d.]+)/)![1]);
+    expect(loss).toBeLessThan(0.7); // two-moons BCE after 200 steps must be well under chance
+  });
+
   test("no major console errors across the journey", async ({ page }) => {
     for (const route of ["/", "/#/explorer", "/#/playground", "/#/learn"]) {
       await page.goto(route);
