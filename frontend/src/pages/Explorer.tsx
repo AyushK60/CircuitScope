@@ -29,6 +29,7 @@ export default function Explorer({ health }: { health: Health | null }) {
     return m ? Math.min(11, Math.max(0, Number(m[1]))) : 5;
   });
   const [head, setHead] = useState<number>(0);
+  const [compareHead, setCompareHead] = useState<number | null>(null);
   const [text, setText] = useState(EXAMPLE);
   const [runText, setRunText] = useState(EXAMPLE);
   const [tokenization, setTokenization] = useState<Tokenization | null>(null);
@@ -198,6 +199,8 @@ export default function Explorer({ health }: { health: Health | null }) {
               onLayer={(l) => { setLayer(l); setLevel("block"); }}
               onHead={(h) => { setHead(h); setLevel("head"); }}
               runText={runText}
+              compareHead={compareHead}
+              onCompareHead={setCompareHead}
             />
           </div>
         </div>
@@ -217,6 +220,8 @@ function InspectorConsole({
   onLayer,
   onHead,
   runText,
+  compareHead,
+  onCompareHead,
 }: {
   meta: ModelMeta;
   flow: FlowData | null;
@@ -227,6 +232,8 @@ function InspectorConsole({
   onLayer: (l: number) => void;
   onHead: (h: number) => void;
   runText: string;
+  compareHead: number | null;
+  onCompareHead: (h: number | null) => void;
 }) {
   if (level === "model") {
     return (
@@ -303,7 +310,7 @@ function InspectorConsole({
   return (
     <>
       <h3>Head {head} of block {layer}</h3>
-      <AttentionHeatmap att={attention} head={head} />
+      <AttentionHeatmap att={attention} head={head} compareHead={compareHead} onCompareHead={onCompareHead} />
       <h3 style={{ marginTop: "0.8rem" }}>All heads of this block (measured)</h3>
       <HeadGallery flow={flow} layer={layer} onSelect={onHead} />
       <div style={{ marginTop: "0.8rem" }}>

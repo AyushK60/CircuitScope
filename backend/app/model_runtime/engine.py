@@ -14,6 +14,7 @@ import torch
 from ..config import (
     MAX_CAPTURE_HOOKS,
     MAX_CAPTURE_TOKENS,
+    MAX_PROMPT_CHARS,
     validate_hook_name,
 )
 from .loader import ADAPTER
@@ -128,15 +129,35 @@ def capture_flow(text: str) -> dict:
     }
 
 
-def continue_text(text: str, n_tokens: int = 5) -> dict:
-    """Greedy continuation: run the real model, append its top token, repeat.
+def continue_text(
+    text: str,
+    n_tokens: int = 5,
+    mode: str = "greedy",
+    temperature: float = 1.0,
+    top_k: int = 0,
+    seed: int | None = None,
+) -> dict:
+    """Autoregressive continuation with the real model.
 
-    Every step records the measured top candidates at that position. This is
-    deterministic greedy decoding (no sampling), bounded to n_tokens steps.
+    mode="greedy": deterministic argmax decoding.
+    mode="sample": temperature softmax with optional top-k filtering; a seeded
+    torch.Generator makes a run reproducible for the same seed.
+    Every step re-runs the model on the growing prefix and records the measured
+    candidate distribution at that position.
     """
     if not 1 <= n_tokens <= 8:
         raise InterventionError("n_tokens must be in [1, 8]")
+    if mode not in ("greedy", "sample"):
+        raise InterventionError("mode must be 'greedy' or 'sample'")
+    if not 0.05 <= temperature <= 2.0:
+        raise InterventionError("temperature must be in [0.05, 2.0]")
+    if not 0 <= top_k <= 50:
+        raise InterventionError("top_k must be in [0, 50] (0 = off)")
     bridge = ADAPTER.bridge()
+    gen = None
+    if mode == "sample":
+        gen = torch.Generator()
+        gen.manual_seed(seed if seed is not None else 0)
     current = text
     steps = []
     t0 = time.perf_counter()
@@ -144,27 +165,43 @@ def continue_text(text: str, n_tokens: int = 5) -> dict:
         toks = bridge.to_tokens(current)
         if toks.shape[1] >= MAX_CAPTURE_TOKENS:
             raise InterventionError("continuation exceeded the token limit")
-        logits = bridge(toks)
-        top = topk_predictions(logits, 5)
-        chosen = top[0]
+        logits = bridge(toks)[0, -1]
+        top = topk_predictions(logits.unsqueeze(0).unsqueeze(0), 5)
+        if mode == "greedy":
+            chosen_idx = int(torch.argmax(logits))
+        else:
+            scaled = logits / max(temperature, 1e-5)
+            if top_k > 0:
+                kth = torch.topk(scaled, min(top_k, scaled.shape[0])).values[-1]
+                scaled = torch.where(scaled < kth, torch.full_like(scaled, float("-inf")), scaled)
+            probs = torch.softmax(scaled, dim=-1)
+            chosen_idx = int(torch.multinomial(probs, 1, generator=gen))
+        chosen_tok = bridge.tokenizer.decode([chosen_idx])
+        chosen_prob = float(torch.softmax(logits, dim=-1)[chosen_idx])
         steps.append(
             {
                 "step": i + 1,
                 "input_so_far": current,
-                "chosen": chosen["token"],
-                "chosen_id": chosen["token_id"],
-                "chosen_prob": round(chosen["prob"], 5),
+                "chosen": chosen_tok,
+                "chosen_id": chosen_idx,
+                "chosen_prob": round(chosen_prob, 5),
                 "top_predictions": top,
             }
         )
-        current = current + chosen["token"]
+        current = current + chosen_tok
     return {
         "text_start": text,
         "text_final": current,
         "n_tokens": n_tokens,
         "steps": steps,
         "elapsed_seconds": round(time.perf_counter() - t0, 4),
-        "decoding": "greedy (argmax) — deterministic, no sampling",
+        "mode": mode,
+        "params": {"temperature": temperature, "top_k": top_k, "seed": seed},
+        "decoding": (
+            "greedy (argmax) — deterministic, no sampling"
+            if mode == "greedy"
+            else f"sampling · temperature {temperature} · top_k {top_k or 'off'} · seed {seed if seed is not None else 0}"
+        ),
     }
 
 
@@ -179,6 +216,78 @@ def compare_candidates(logits: torch.Tensor, token_a: int, token_b: int) -> dict
         "prob_a": float(probs[token_a]),
         "prob_b": float(probs[token_b]),
         "D": round(d, 5),
+    }
+
+
+def score_question_candidates(
+    context: str,
+    question: str,
+    candidates: list[str],
+    template: str | None = None,
+) -> dict:
+    """Question & Candidate Explorer scoring.
+
+    Constructs a documented prompt template ending in an answer prefix, then
+    scores every candidate by conditional token log-probability (teacher
+    forcing). Multi-token candidates use the SUM of token log-probs under the
+    same prompt prefix — never just the first token. Also reports the first-
+    token probability and the length-normalized mean log-prob so the three
+    metrics can be distinguished. These are continuation scores, NOT a claim
+    that GPT-2 answers questions correctly.
+    """
+    if not 2 <= len(candidates) <= 5:
+        raise InterventionError("provide between 2 and 5 candidates")
+    if template and "{context}" not in template and "{question}" not in template:
+        raise InterventionError("template must contain {context} and {question} placeholders")
+    prompt = (
+        template.format(context=context, question=question)
+        if template
+        else f"{context}\nQuestion: {question}\nAnswer:"
+    )
+    if len(prompt) > MAX_PROMPT_CHARS:
+        raise InterventionError("constructed prompt exceeds the character limit")
+    bridge = ADAPTER.bridge()
+    prompt_ids = bridge.to_tokens(prompt)[0].tolist()  # includes BOS
+    n_prompt = len(prompt_ids)
+    scored = []
+    t0 = time.perf_counter()
+    for cand in candidates:
+        cand_ids = bridge.tokenizer(cand, add_special_tokens=False)["input_ids"]
+        if not cand_ids:
+            raise InterventionError(f"candidate {cand!r} produced no tokens")
+        full = torch.tensor([prompt_ids + cand_ids])
+        logits = bridge(full)
+        logprobs = torch.log_softmax(logits[0], dim=-1)
+        # candidate token j is predicted at position n_prompt - 1 + j
+        lp = [float(logprobs[n_prompt - 1 + j, tid]) for j, tid in enumerate(cand_ids)]
+        first_prob = float(torch.softmax(logits[0, n_prompt - 1], dim=-1)[cand_ids[0]])
+        scored.append(
+            {
+                "candidate": cand,
+                "tokens": bridge.tokenizer.convert_ids_to_tokens(cand_ids),
+                "token_ids": cand_ids,
+                "n_tokens": len(cand_ids),
+                "total_logprob": round(sum(lp), 4),
+                "mean_logprob": round(sum(lp) / len(lp), 4),
+                "first_token_prob": round(first_prob, 5),
+                "per_token_logprob": [round(v, 4) for v in lp],
+            }
+        )
+    best = max(scored, key=lambda s: s["total_logprob"])
+    return {
+        "prompt": prompt,
+        "context": context,
+        "question": question,
+        "candidates": scored,
+        "preferred_by_total_logprob": best["candidate"],
+        "method": (
+            "conditional token log-probability under the fixed prompt prefix "
+            "(teacher forcing). total = sum over candidate tokens; mean = "
+            "length-normalized; first = probability of the candidate's first "
+            "token only. These are continuation scores, not correctness claims."
+        ),
+        "length_warning": len({s["n_tokens"] for s in scored}) > 1,
+        "elapsed_seconds": round(time.perf_counter() - t0, 4),
     }
 
 

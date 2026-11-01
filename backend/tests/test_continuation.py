@@ -72,3 +72,75 @@ def test_history_lists_saved_experiments(client):
     assert len(saved) == saved_before + 1
     assert saved[0]["id"] == exp_id
     assert saved[0]["status"] == "complete"
+
+
+def test_sample_mode_seeded_reproducible(client):
+    req = {"text": "John and Mary went to the shop.", "n_tokens": 4, "mode": "sample", "temperature": 0.9, "top_k": 20, "seed": 1234}
+    r1 = client.post("/api/continue", json=req)
+    r2 = client.post("/api/continue", json=req)
+    assert r1.status_code == 200 and r2.status_code == 200
+    assert r1.json()["text_final"] == r2.json()["text_final"], "same seed must reproduce"
+    assert "sampling" in r1.json()["decoding"]
+    # different seed should (virtually always) produce a different continuation
+    r3 = client.post("/api/continue", json={**req, "seed": 99})
+    assert r3.json()["text_final"] != r1.json()["text_final"]
+
+
+def test_sample_mode_param_bounds(client):
+    ok = client.post("/api/continue", json={"text": "Hi", "n_tokens": 1, "mode": "sample", "temperature": 0.05, "top_k": 1})
+    assert ok.status_code == 200
+    bad_t = client.post("/api/continue", json={"text": "Hi", "n_tokens": 1, "temperature": 3.0})
+    assert bad_t.status_code == 422
+    bad_m = client.post("/api/continue", json={"text": "Hi", "n_tokens": 1, "mode": "beam"})
+    assert bad_m.status_code == 422
+    bad_k = client.post("/api/continue", json={"text": "Hi", "n_tokens": 1, "top_k": 99})
+    assert bad_k.status_code == 422
+
+
+def test_question_scoring_single_token(client):
+    r = client.post(
+        "/api/question",
+        json={
+            "context": "The father asked his son for water because the father was sick.",
+            "question": "Who was sick?",
+            "candidates": [" father", " son"],
+        },
+    )
+    assert r.status_code == 200
+    d = r.json()
+    assert d["prompt"].endswith("Answer:")
+    for c in d["candidates"]:
+        assert c["n_tokens"] == 1
+        # for single-token candidates, total == the single token's logprob
+        assert c["total_logprob"] == c["per_token_logprob"][0]
+    assert d["candidates"][0]["candidate"] == " father"
+
+
+def test_question_scoring_multi_token_uses_sum(client):
+    r = client.post(
+        "/api/question",
+        json={
+            "context": "The father asked his son for water.",
+            "question": "Who was asked for water?",
+            "candidates": [" the father", " his son"],
+        },
+    )
+    assert r.status_code == 200
+    d = r.json()
+    assert d["length_warning"] is False or d["length_warning"] is True  # present
+    for c in d["candidates"]:
+        if c["n_tokens"] > 1:
+            # total must be the sum of ALL candidate token logprobs, not just the first
+            assert c["total_logprob"] == pytest.approx(sum(c["per_token_logprob"]), abs=1e-3)
+            assert c["mean_logprob"] == pytest.approx(c["total_logprob"] / c["n_tokens"], abs=1e-3)
+            assert abs(c["first_token_prob"]) < 1.0
+
+
+def test_question_validation(client):
+    too_few = client.post("/api/question", json={"context": "a", "question": "b", "candidates": [" x"]})
+    assert too_few.status_code == 422
+    bad_template = client.post(
+        "/api/question",
+        json={"context": "a", "question": "b", "candidates": [" x", " y"], "template": "no placeholders"},
+    )
+    assert bad_template.status_code == 422

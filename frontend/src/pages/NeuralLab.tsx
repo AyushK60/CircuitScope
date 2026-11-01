@@ -1,359 +1,359 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { createLabNetwork, edgeCount, forwardLab, type LabNetwork } from "../lib/feedforward";
 
-/** Neural Network Lab — a genuine, interactive feedforward network.
+/** Neural Network Lab — an educational, fully-connected feedforward network.
  *
- *  What this is: a tiny dense MLP (2-8-8-1) trained live in your browser with
- *  real gradient descent on a two-moons dataset. Every number on screen is
- *  computed here — loss, activations, decision boundary.
- *  What this is NOT: GPT-2. It contains no attention, no tokens, no residual
- *  stream. It exists to build intuition for dense layers before exploring the
- *  transformer in the Model Explorer. */
+ *  4 inputs → 6 → 6 → 5 → 3 outputs, ReLU hidden activations, stable softmax
+ *  outputs, deterministic documented initial weights. Every displayed value is
+ *  computed from the current inputs and the actual weight matrices.
+ *
+ *  This is NOT GPT-2 and NOT a measured transformer view: it is an educational
+ *  simulation of a classic dense network, contrasted with the transformer in
+ *  the Model Explorer. */
 
-// ---------- deterministic data ----------
-function mulberry32(seed: number) {
-  return () => {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+const INPUT_LABELS = ["in·0", "in·1", "in·2", "in·3"];
+const OUT_LABELS = ["class A", "class B", "class C"];
+
+const W = 940;
+const H = 560;
+const COL_X = [70, 280, 490, 700, 880];
+
+function colY(l: number, i: number, sizes: number[]): number {
+  const gap = Math.min(74, (H - 110) / sizes[l]);
+  const y0 = H / 2 - ((sizes[l] - 1) * gap) / 2;
+  return y0 + i * gap;
 }
-
-interface Point {
-  x: number;
-  y: number;
-  label: number;
-}
-
-function twoMoons(n = 200, noise = 0.12): Point[] {
-  const rand = mulberry32(42);
-  const pts: Point[] = [];
-  const gauss = () => (rand() + rand() + rand() + rand() - 2) * noise * 2;
-  for (let i = 0; i < n; i++) {
-    const upper = i % 2 === 0;
-    const t = rand() * Math.PI;
-    if (upper) {
-      pts.push({ x: Math.cos(t) + gauss(), y: Math.sin(t) - 0.25 + gauss(), label: 1 });
-    } else {
-      pts.push({ x: 1 - Math.cos(t) + gauss(), y: 0.25 - Math.sin(t) + gauss(), label: 0 });
-    }
-  }
-  return pts;
-}
-
-// ---------- tiny MLP with plain backprop ----------
-class TinyMLP {
-  sizes = [2, 8, 8, 1];
-  W: number[][][] = [];
-  b: number[][] = [];
-
-  constructor(seed = 7) {
-    const rand = mulberry32(seed);
-    for (let l = 1; l < this.sizes.length; l++) {
-      const fanIn = this.sizes[l - 1];
-      const scale = Math.sqrt(2 / fanIn);
-      this.W.push(
-        Array.from({ length: this.sizes[l] }, () =>
-          Array.from({ length: fanIn }, () => (rand() * 2 - 1) * scale),
-        ),
-      );
-      this.b.push(Array.from({ length: this.sizes[l] }, () => 0));
-    }
-  }
-
-  forward(x: number[]): { acts: number[][] } {
-    const acts: number[][] = [x];
-    for (let l = 0; l < this.W.length; l++) {
-      const prev = acts[l];
-      const z = this.W[l].map((row, j) => row.reduce((s, w, i) => s + w * prev[i], 0) + this.b[l][j]);
-      const isOut = l === this.W.length - 1;
-      acts.push(z.map((v) => (isOut ? 1 / (1 + Math.exp(-v)) : Math.tanh(v))));
-    }
-    return { acts };
-  }
-
-  /** one full-batch gradient descent step; returns mean BCE loss */
-  trainStep(data: Point[], lr: number): number {
-    const gW = this.W.map((m) => m.map((r) => r.map(() => 0)));
-    const gB = this.b.map((v) => v.map(() => 0));
-    let loss = 0;
-    for (const p of data) {
-      const { acts } = this.forward([p.x, p.y]);
-      const out = acts[acts.length - 1][0];
-      const y = p.label;
-      loss += -(y * Math.log(out + 1e-9) + (1 - y) * Math.log(1 - out + 1e-9));
-      // deltas
-      let delta: number[] = [out - y]; // sigmoid + BCE
-      for (let l = this.W.length - 1; l >= 0; l--) {
-        for (let j = 0; j < this.W[l].length; j++) {
-          for (let i = 0; i < this.W[l][j].length; i++) gW[l][j][i] += delta[j] * acts[l][i];
-          gB[l][j] += delta[j];
-        }
-        if (l > 0) {
-          const prev = this.W[l].map((row, j) => row.map((w) => w * delta[j]));
-          delta = this.b[l - 1].map((_, i) => {
-            let s = 0;
-            for (let j = 0; j < prev.length; j++) s += prev[j][i];
-            const a = acts[l][i];
-            return s * (1 - a * a); // tanh'
-          });
-        }
-      }
-    }
-    const n = data.length;
-    for (let l = 0; l < this.W.length; l++) {
-      for (let j = 0; j < this.W[l].length; j++) {
-        for (let i = 0; i < this.W[l][j].length; i++) this.W[l][j][i] -= (lr * gW[l][j][i]) / n;
-        this.b[l][j] -= (lr * gB[l][j]) / n;
-      }
-    }
-    return loss / n;
-  }
-
-  accuracy(data: Point[]): number {
-    let ok = 0;
-    for (const p of data) {
-      const out = this.forward([p.x, p.y]).acts[this.W.length][0];
-      if ((out > 0.5 ? 1 : 0) === p.label) ok++;
-    }
-    return ok / data.length;
-  }
-}
-
-const BOUND = 240; // grid resolution for the boundary render
 
 export default function NeuralLab() {
-  const data = useMemo(() => twoMoons(), []);
-  const netRef = useRef<TinyMLP>(new TinyMLP());
-  const [step, setStep] = useState(0);
-  const [loss, setLoss] = useState<number>(() => {
-    const n = new TinyMLP();
-    return n.trainStep(data, 0); // measure initial loss without updating (lr 0)
-  });
-  const [history, setHistory] = useState<number[]>([]);
-  const [lr, setLr] = useState(1.0);
-  const [probe, setProbe] = useState<[number, number]>([0.5, 0]);
-  const [version, setVersion] = useState(0); // force repaints
-  const boundaryRef = useRef<HTMLCanvasElement | null>(null);
-
-  const toScreen = useCallback(
-    ([x, y]: [number, number]): [number, number] => [
-      ((x + 2.2) / 4.4) * 100,
-      ((2.2 - y) / 4.4) * 100,
-    ],
-    [],
-  );
-
-  const drawBoundary = useCallback(() => {
-    const cv = boundaryRef.current;
-    if (!cv) return;
-    const ctx = cv.getContext("2d");
-    if (!ctx) return;
-    const img = ctx.createImageData(BOUND, BOUND);
-    const net = netRef.current;
-    let i = 0;
-    for (let py = 0; py < BOUND; py++) {
-      const y = 2.2 - (py / BOUND) * 4.4;
-      for (let px = 0; px < BOUND; px++) {
-        const x = (px / BOUND) * 4.4 - 2.2;
-        const p = net.forward([x, y]).acts[net.W.length][0];
-        // ink (0) → persimmon (1)
-        const t = Math.max(0, Math.min(1, p));
-        img.data[i++] = Math.round(35 + t * (223 - 35));
-        img.data[i++] = Math.round(42 + t * (121 - 42));
-        img.data[i++] = Math.round(40 + t * (90 - 40));
-        img.data[i++] = 255;
-      }
-    }
-    ctx.putImageData(img, 0, 0);
-    // data points
-    for (const p of data) {
-      const [sx, sy] = toScreen([p.x, p.y]);
-      ctx.beginPath();
-      ctx.arc((sx / 100) * BOUND, (sy / 100) * BOUND, 2.4, 0, Math.PI * 2);
-      ctx.fillStyle = p.label === 1 ? "#91aa91" : "#c96a5e";
-      ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.4)";
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-    }
-    // probe
-    const [sx, sy] = toScreen(probe);
-    ctx.beginPath();
-    ctx.arc((sx / 100) * BOUND, (sy / 100) * BOUND, 4.4, 0, Math.PI * 2);
-    ctx.strokeStyle = "var(--text-0)";
-    ctx.lineWidth = 2;
-    ctx.stroke();
-  }, [data, probe, toScreen]);
-
-  useMemo(() => drawBoundary(), [drawBoundary, version]);
-
-  const train = (steps: number) => {
-    const net = netRef.current;
-    let last = 0;
-    for (let i = 0; i < steps; i++) last = net.trainStep(data, lr);
-    setStep((s) => s + steps);
-    setLoss(last);
-    setHistory((h) => [...h.slice(-199), last]);
-    setVersion((v) => v + 1);
-  };
+  const [seed, setSeed] = useState(1234);
+  const net: LabNetwork = useMemo(() => createLabNetwork(seed), [seed]);
+  const [inputs, setInputs] = useState<number[]>([0.5, -1, 1.2, 0]);
+  const [sel, setSel] = useState<{ l: number; i: number } | null>(null);
+  const [focusedOnly, setFocusedOnly] = useState(false);
+  void setFocusedOnly;
+  const [playLayer, setPlayLayer] = useState<number | null>(null);
+  const [cam, setCam] = useState({ x: 0, y: 0, k: 1 });
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef<{ px: number; py: number; cam: typeof cam } | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const result = useMemo(() => forwardLab(net, inputs), [net, inputs]);
 
   const reset = () => {
-    netRef.current = new TinyMLP(Math.floor(Math.random() * 100000));
-    setStep(0);
-    setHistory([]);
-    const n = netRef.current;
-    setLoss(n.trainStep(data, 0));
-    setVersion((v) => v + 1);
+    setSeed(1234);
+    setInputs([0.5, -1, 1.2, 0]);
+    setSel(null);
+    setPlayLayer(null);
+    setCam({ x: 0, y: 0, k: 1 });
   };
 
-  const probeOut = netRef.current.forward([...probe]).acts[netRef.current.W.length][0];
-  const probeActs = netRef.current.forward([...probe]).acts;
+  const zoomBy = (f: number) =>
+    setCam((c) => {
+      const k = Math.min(2.2, Math.max(0.4, c.k * f));
+      return { k, x: 470 - ((470 - c.x) / c.k) * k, y: 280 - ((280 - c.y) / c.k) * k };
+    });
+
+  const onWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const px = ((e.clientX - rect.left) / rect.width) * W;
+    const py = ((e.clientY - rect.top) / rect.height) * H;
+    setCam((c) => {
+      const k = Math.min(2.2, Math.max(0.4, c.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12)));
+      return { k, x: px - ((px - c.x) / c.k) * k, y: py - ((py - c.y) / c.k) * k };
+    });
+  };
+
+  const selInfo = sel
+    ? {
+        layer: sel.l,
+        index: sel.i,
+        bias: sel.l > 0 ? net.b[sel.l - 1][sel.i] : null,
+        z: sel.l > 0 ? result.z[sel.l - 1][sel.i] : null,
+        a: result.a[sel.l][sel.i],
+        incoming: sel.l > 0 ? net.W[sel.l - 1].map((row, j) => ({ from: j, w: row[sel.i] })) : null,
+      }
+    : null;
+
+  const edgeOpacity = (w: number) => 0.12 + Math.min(0.75, Math.abs(w) / 1.4);
+  const edgeColor = (w: number) => (w >= 0 ? "var(--brass)" : "var(--violet)");
 
   return (
-    <main className="page">
+    <main className="page" style={{ maxWidth: "1400px" }}>
       <h1>Neural Network Lab</h1>
-      <p style={{ color: "var(--text-1)", maxWidth: "78ch" }}>
-        A genuine dense feedforward network — 2 → 8 → 8 → 1 units with tanh activations — trained{" "}
-        <strong>live in your browser</strong> with real gradient descent on the classic two-moons dataset.
-        Watch the decision boundary take shape, then inspect every activation inside the network for any
-        probe point.
+      <p style={{ color: "var(--text-1)", maxWidth: "80ch" }}>
+        A classic fully-connected feedforward network: <strong>4 inputs → 6 → 6 → 5 → 3 outputs</strong>{" "}
+        with ReLU hidden activations and a stable softmax. Adjust the inputs and every neuron value,
+        weight path, and output probability is computed live from the actual weight matrices.
       </p>
       <div className="state-banner warn" style={{ marginBottom: "1rem" }}>
-        <strong>Educational simulation.</strong> This toy network is computed entirely in your browser and
-        is <em>not</em> GPT-2 — it has no attention, tokens, or residual stream. It shows what "layers of
-        neurons" actually do before you explore the transformer, where CircuitScope's measured numbers live.
+        <strong>Educational Feedforward Network — separate from GPT-2 Small.</strong> This toy network's
+        outputs are abstract classes, not real-world predictions. The transformer explorer remains the
+        authoritative view of the running language model.
       </div>
 
       <div className="panel">
+        <h3>Inputs</h3>
         <div className="lab-controls">
-          <button className="primary" onClick={() => train(100)}>
-            Train 100 steps
-          </button>
-          <button onClick={() => train(1)}>1 step</button>
-          <button onClick={reset}>Reset weights</button>
-          <label htmlFor="lr-sel">
-            learning rate
-            <select id="lr-sel" value={lr} onChange={(e) => setLr(Number(e.target.value))} style={{ width: "auto" }}>
-              {[0.2, 0.5, 1.0, 2.0].map((v) => (
-                <option key={v} value={v}>
-                  {v}
-                </option>
-              ))}
-            </select>
+          {inputs.map((v, i) => (
+            <label key={i} htmlFor={`nlin${i}`} className="mono" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              {INPUT_LABELS[i]}
+              <input
+                id={`nlin${i}`}
+                type="range"
+                min={-2}
+                max={2}
+                step={0.1}
+                value={v}
+                onChange={(e) =>
+                  setInputs((arr) => arr.map((x, j) => (j === i ? Number(e.target.value) : x)))
+                }
+                style={{ width: "7rem" }}
+              />
+              {v.toFixed(1)}
+            </label>
+          ))}
+          <button onClick={reset}>Reset</button>
+          <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            <input type="checkbox" checked={focusedOnly} onChange={(e) => setFocusedOnly(e.target.checked)} />
+            focus selected neuron's edges only
           </label>
-          <span className="mono lab-stats">
-            step {step} · loss {loss.toFixed(4)} · accuracy {(netRef.current.accuracy(data) * 100).toFixed(1)}%
-          </span>
         </div>
-        {history.length > 2 && <LossCurve history={history} />}
+      </div>
+
+      <div className="panel" style={{ padding: "0.6rem", position: "relative" }}>
+        <div className="canvas-controls" style={{ position: "absolute", top: "0.9rem", right: "0.9rem", zIndex: 5 }}>
+          <button onClick={() => zoomBy(1.25)} aria-label="Zoom in">＋</button>
+          <button onClick={() => zoomBy(1 / 1.25)} aria-label="Zoom out">－</button>
+          <button onClick={() => setCam({ x: 0, y: 0, k: 1 })} aria-label="Fit network">⤢</button>
+        </div>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          width="100%"
+          height="560"
+          role="img"
+          aria-label={`Feedforward network with ${net.sizes.join(" → ")} neurons and ${edgeCount(net)} connections`}
+          tabIndex={0}
+          style={{ cursor: dragging ? "grabbing" : "grab", touchAction: "none" }}
+          onWheel={onWheel}
+          onPointerDown={(e) => {
+            dragRef.current = { px: e.clientX, py: e.clientY, cam };
+            setDragging(true);
+          }}
+          onPointerMove={(e) => {
+            const d = dragRef.current;
+            if (!d) return;
+            const rect = svgRef.current!.getBoundingClientRect();
+            setCam({
+              ...d.cam,
+              x: d.cam.x + (W / rect.width) * (e.clientX - d.px),
+              y: d.cam.y + (H / rect.height) * (e.clientY - d.py),
+            });
+          }}
+          onPointerUp={() => {
+            dragRef.current = null;
+            setDragging(false);
+          }}
+          onPointerLeave={() => {
+            dragRef.current = null;
+            setDragging(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setSel(null);
+            if (e.key === "ArrowRight") setPlayLayer((p) => Math.min(net.sizes.length - 1, (p ?? -1) + 1));
+            if (e.key === "ArrowLeft") setPlayLayer((p) => Math.max(0, (p ?? 2) - 1));
+          }}
+        >
+          <g transform={`translate(${cam.x} ${cam.y}) scale(${cam.k})`} style={{ transition: dragging ? "none" : "transform 0.4s cubic-bezier(0.22,1,0.36,1)" }}>
+            <defs>
+              <marker id="labArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-1)" />
+              </marker>
+            </defs>
+            {/* edges */}
+            {net.W.map((mat, l) =>
+              mat.map((row, j) =>
+                row.map((w, i) => {
+                  const dim =
+                    playLayer != null && l >= playLayer
+                      ? 0.06
+                      : focusedOnly && sel
+                        ? !(
+                            (sel.l === l + 1 && sel.i === j) ||
+                            (sel.l === l && sel.i === i)
+                          )
+                        : false;
+                  return (
+                    <path
+                      key={`e${l}-${j}-${i}`}
+                      d={`M ${COL_X[l] + 10} ${colY(l, i, net.sizes)} C ${(COL_X[l] + COL_X[l + 1]) / 2} ${colY(l, i, net.sizes)}, ${(COL_X[l] + COL_X[l + 1]) / 2} ${colY(l + 1, j, net.sizes)}, ${COL_X[l + 1] - 10} ${colY(l + 1, j, net.sizes)}`}
+                      stroke={edgeColor(w)}
+                      strokeWidth={0.6 + Math.min(1.8, Math.abs(w))}
+                      opacity={dim ? 0.05 : edgeOpacity(w)}
+                      fill="none"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setSel({ l: l + 1, i: j })}
+                    />
+                  );
+                }),
+              ),
+            )}
+            {/* neurons */}
+            {net.sizes.map((n, l) =>
+              Array.from({ length: n }, (_, i) => {
+                const a = result.a[l][i];
+                const t = l === 0 ? (a + 2) / 4 : l === net.sizes.length - 1 ? a : Math.max(0, Math.min(1, a));
+                const isSel = sel?.l === l && sel?.i === i;
+                const dim = playLayer != null && l > playLayer;
+                return (
+                  <g
+                    key={`n${l}-${i}`}
+                    className="arch-node"
+                    onClick={() => setSel(isSel ? null : { l, i })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSel(isSel ? null : { l, i });
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Neuron layer ${l} index ${i}: activation ${a.toFixed(3)}`}
+                    opacity={dim ? 0.15 : 1}
+                  >
+                    <circle
+                      cx={COL_X[l]}
+                      cy={colY(l, i, net.sizes)}
+                      r={16}
+                      fill={`rgba(223,121,90,${0.08 + t * 0.8})`}
+                      stroke={isSel ? "var(--lavender)" : "var(--line-1)"}
+                      strokeWidth={isSel ? 2.4 : 1.2}
+                    />
+                    <text x={COL_X[l]} y={colY(l, i, net.sizes) + 3.5} fill="var(--text-0)" fontSize={9} textAnchor="middle" fontFamily="monospace">
+                      {a.toFixed(2)}
+                    </text>
+                    {l === 0 && (
+                      <text x={COL_X[l] - 26} y={colY(l, i, net.sizes) + 3} fill="var(--text-2)" fontSize={10} textAnchor="end">
+                        {INPUT_LABELS[i]}
+                      </text>
+                    )}
+                    {l === net.sizes.length - 1 && (
+                      <text x={COL_X[l] + 26} y={colY(l, i, net.sizes) + 3} fill="var(--text-2)" fontSize={10}>
+                        {OUT_LABELS[i]} {(result.probs[i] * 100).toFixed(1)}%
+                      </text>
+                    )}
+                  </g>
+                );
+              }),
+            )}
+            {["input", "hidden 1 (ReLU)", "hidden 2 (ReLU)", "hidden 3 (ReLU)", "output (softmax)"].map((s, l) => (
+              <text key={s} x={COL_X[l]} y={26} fill={playLayer === l ? "var(--accent)" : "var(--text-2)"} fontSize={11} textAnchor="middle">
+                {s}
+              </text>
+            ))}
+          </g>
+        </svg>
+        <div className="legend-scale" style={{ padding: "0.2rem 0.6rem" }}>
+          <span>connection color: </span>
+          <span style={{ color: "var(--brass)" }}>positive weight</span>
+          <span> / </span>
+          <span style={{ color: "var(--violet)" }}>negative weight</span>
+          <span> · thickness & opacity ∝ |weight| · click a neuron or edge to inspect</span>
+        </div>
       </div>
 
       <div className="grid-2" style={{ alignItems: "start", marginTop: "1rem" }}>
         <div className="panel">
-          <h3>Decision boundary</h3>
-          <p className="inspector-meta">
-            warm regions → model outputs ≈ 1 (upper moon) · dark regions → ≈ 0. Click anywhere to move the
-            probe point.
+          <h3>Selected neuron</h3>
+          {!selInfo && <p className="inspector-meta">Click any neuron in the diagram to inspect its bias, pre-activation, and incoming weights.</p>}
+          {selInfo && (
+            <>
+              <p className="inspector-meta mono">
+                layer {selInfo.layer} · neuron {selInfo.index}
+              </p>
+              {selInfo.z != null ? (
+                <table className="kv-table">
+                  <tbody>
+                    <tr><td>pre-activation z</td><td>{selInfo.z.toFixed(4)}</td></tr>
+                    <tr><td>bias</td><td>{selInfo.bias!.toFixed(4)}</td></tr>
+                    <tr><td>activation</td><td>{selInfo.a.toFixed(4)} {selInfo.layer < net.sizes.length - 1 ? "(ReLU: max(0, z))" : "(logit)"}</td></tr>
+                    <tr><td>incoming weights</td><td>{selInfo.incoming!.map((w) => `w[${w.from}]=${w.w.toFixed(3)}`).join(" · ")}</td></tr>
+                  </tbody>
+                </table>
+              ) : (
+                <p className="inspector-meta mono">input neuron: value {selInfo.a.toFixed(2)} (set by the sliders above)</p>
+              )}
+            </>
+          )}
+          <h3 style={{ marginTop: "1rem" }}>Forward-pass replay</h3>
+          <p className="inspector-meta" style={{ marginBottom: "0.6rem" }}>
+            Schematic replay of the computed forward pass — each stage highlights the layer whose values
+            were just computed. Presentation pacing only.
           </p>
-          <canvas
-            ref={boundaryRef}
-            width={BOUND}
-            height={BOUND}
-            style={{ width: "100%", maxWidth: 480, borderRadius: 8, cursor: "crosshair", border: "1px solid var(--line-0)" }}
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const px = ((e.clientX - rect.left) / rect.width) * 4.4 - 2.2;
-              const py = 2.2 - ((e.clientY - rect.top) / rect.height) * 4.4;
-              setProbe([Math.max(-2.2, Math.min(2.2, px)), Math.max(-2.2, Math.min(2.2, py))]);
-            }}
-          />
-          <p className="inspector-meta mono">
-            probe ({probe[0].toFixed(2)}, {probe[1].toFixed(2)}) → output {probeOut.toFixed(4)} → class{" "}
-            {probeOut > 0.5 ? "1 (upper moon)" : "0 (lower moon)"}
-          </p>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              className="primary"
+              onClick={() => {
+                setPlayLayer(0);
+                let l = 0;
+                const t = setInterval(() => {
+                  l += 1;
+                  setPlayLayer(l);
+                  if (l >= net.sizes.length - 1) clearInterval(t);
+                }, 700);
+              }}
+            >
+              ▶ Replay forward pass
+            </button>
+            <button onClick={() => setPlayLayer(null)}>Show all layers</button>
+          </div>
+          <h3 style={{ marginTop: "1rem" }}>Output probabilities</h3>
+          {result.probs.map((p, i) => (
+            <div className="bar-row" key={i}>
+              <span className="label">{OUT_LABELS[i]}</span>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ left: 0, width: `${p * 100}%`, background: "var(--accent)" }} />
+              </div>
+              <span className="value">{(p * 100).toFixed(1)}%</span>
+            </div>
+          ))}
+          <p className="inspector-meta mono">logits: [{result.logits.map((v) => v.toFixed(2)).join(", ")}]</p>
         </div>
         <div className="panel">
-          <h3>Inside the network at the probe</h3>
-          <NetDiagram acts={probeActs} />
-          <p className="inspector-meta">
-            node brightness = activation value (tanh ∈ [−1, 1] hidden, sigmoid ∈ [0, 1] output); edge
-            opacity = |weight|. Every value is computed by the code on this page for the probe you clicked.
+          <h3>Compare with GPT-2</h3>
+          <p style={{ color: "var(--text-1)" }}>
+            This dense network pushes each input through fixed layers, one direction, no memory. GPT-2
+            instead tokenizes text and lets every token <em>attend</em> to earlier tokens, writing each
+            result into a shared residual stream that all twelve blocks read and write.
           </p>
+          <ul className="fact-list">
+            <li><strong>{edgeCount(net)} connections</strong> here — all weights are visible and inspectable</li>
+            <li><strong>no attention</strong>: every neuron sees only the previous layer</li>
+            <li><strong>no residual stream</strong>: values are replaced, not added to</li>
+          </ul>
+          <a href="#/explorer">
+            <button className="primary">Open the GPT-2 Model Explorer →</button>
+          </a>
+          <h3 style={{ marginTop: "1.2rem" }}>Accessible activation table</h3>
+          <div className="table-scroll">
+            <table className="kv-table">
+              <caption className="inspector-meta" style={{ captionSide: "top", textAlign: "left" }}>
+                every neuron's current activation, computed from your inputs
+              </caption>
+              <tbody>
+                {net.sizes.map((_n, l) => (
+                  <tr key={l}>
+                    <td>layer {l}</td>
+                    <td>{result.a[l].map((v) => v.toFixed(2)).join(" · ")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </main>
-  );
-}
-
-function LossCurve({ history }: { history: number[] }) {
-  const w = 560;
-  const h = 60;
-  const max = Math.max(...history, 0.8);
-  const pts = history
-    .map((v, i) => `${(i / (history.length - 1)) * w},${h - (v / max) * (h - 6) - 3}`)
-    .join(" ");
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" style={{ marginTop: "0.6rem" }} role="img" aria-label="Training loss curve">
-      <polyline points={pts} fill="none" stroke="var(--accent)" strokeWidth={1.6} />
-      <text x={4} y={12} fill="var(--text-2)" fontSize={9}>
-        training loss (measured each logged step)
-      </text>
-    </svg>
-  );
-}
-
-function NetDiagram({ acts }: { acts: number[][] }) {
-  const sizes = acts.map((a) => a.length);
-  const W = 460;
-  const colX = sizes.map((_, l) => 50 + (l * (W - 100)) / (sizes.length - 1));
-  const yOf = (l: number, i: number) => {
-    const gap = Math.min(34, 190 / sizes[l]);
-    const y0 = 105 - ((sizes[l] - 1) * gap) / 2;
-    return y0 + i * gap;
-  };
-  // weights are not passed here; draw connections structurally (opacity fixed)
-  return (
-    <svg viewBox="0 0 460 210" width="100%" role="img" aria-label="Network activations at the probe point">
-      {[0, 1, 2].map((l) =>
-        acts[l].map((_, i) =>
-          acts[l + 1].map((_, j) => (
-            <path
-              key={`${l}-${i}-${j}`}
-              d={`M ${colX[l] + 8} ${yOf(l, i)} L ${colX[l + 1] - 8} ${yOf(l + 1, j)}`}
-              stroke="var(--line-1)"
-              strokeWidth={0.6}
-              opacity={0.3}
-              fill="none"
-            />
-          )),
-        ),
-      )}
-      {acts.map((layer, l) =>
-        layer.map((a, i) => {
-          const t = Math.max(0, Math.min(1, l === acts.length - 1 ? a : (a + 1) / 2));
-          return (
-            <g key={`n${l}-${i}`}>
-              <circle
-                cx={colX[l]}
-                cy={yOf(l, i)}
-                r={9}
-                fill={`rgba(223,121,90,${0.08 + t * 0.85})`}
-                stroke="var(--line-1)"
-              />
-              <text x={colX[l]} y={yOf(l, i) + 3} fill="var(--text-0)" fontSize={6.5} textAnchor="middle" fontFamily="monospace">
-                {a.toFixed(1)}
-              </text>
-            </g>
-          );
-        }),
-      )}
-      {["input", "hidden 1", "hidden 2", "output"].map((s, l) => (
-        <text key={s} x={colX[l]} y={200} fill="var(--text-2)" fontSize={9} textAnchor="middle">
-          {s}
-        </text>
-      ))}
-    </svg>
   );
 }

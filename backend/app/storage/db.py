@@ -96,3 +96,12 @@ def list_experiments(limit: int = 50) -> list[dict]:
         }
         for r in rows
     ]
+
+
+def delete_experiment(exp_id: str) -> bool:
+    if _conn is None:
+        return False
+    with _CONN_LOCK:
+        cur = _conn.execute("DELETE FROM experiments WHERE id=?", (exp_id,))
+        _conn.commit()
+    return cur.rowcount > 0

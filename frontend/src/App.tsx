@@ -66,7 +66,7 @@ export default function App() {
           <span className="scope">⊙</span> CircuitScope
         </a>
         <nav className="nav" aria-label="Main">
-          {(["explorer", "playground", "learn", "lab"] as Route[]).map((r) => (
+          {(["explorer", "lab", "playground", "learn"] as Route[]).map((r) => (
             <a
               key={r}
               href={`#/${r}`}

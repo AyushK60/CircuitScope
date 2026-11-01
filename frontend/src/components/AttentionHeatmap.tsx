@@ -8,12 +8,30 @@ const CELL = 26;
  *  Clicking a query token selects it: that row is highlighted, other rows dim,
  *  and the measured top attended tokens are listed (causal mask visible as the
  *  empty upper triangle). */
-export default function AttentionHeatmap({ att, head }: { att: AttentionPattern | null; head: number }) {
+export default function AttentionHeatmap({
+  att,
+  head,
+  compareHead,
+  onCompareHead,
+}: {
+  att: AttentionPattern | null;
+  head: number;
+  /** optional second head for a measured |A−B| comparison */
+  compareHead?: number | null;
+  onCompareHead?: (h: number) => void;
+}) {
   const [hover, setHover] = useState<{ q: number; k: number } | null>(null);
   const [selectedQuery, setSelectedQuery] = useState<number | null>(null);
 
   const tokens = att?.tokens ?? [];
   const matrix = att?.pattern?.[head];
+
+  const diffMatrix = useMemo(() => {
+    if (compareHead == null || compareHead === head || !att) return null;
+    const a = att.pattern[head];
+    const b = att.pattern[compareHead];
+    return a.map((row, q) => row.map((v, k) => Math.abs(v - b[q][k])));
+  }, [compareHead, head, att]);
 
   const topAttended = useMemo(() => {
     if (selectedQuery == null || !matrix) return null;
@@ -76,9 +94,10 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
             {t}
           </text>
         ))}
-        {matrix.map((row, q) =>
+        {(diffMatrix ?? matrix).map((row, q) =>
           row.map((v, k) => {
             const dimmed = selectedQuery != null && selectedQuery !== q;
+            const masked = k > q; // causally masked: no attention possible
             return (
               <rect
                 key={`${q}-${k}`}
@@ -86,8 +105,8 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
                 y={40 + q * CELL}
                 width={CELL - 2}
                 height={CELL - 2}
-                fill={color(v)}
-                opacity={dimmed ? 0.25 : 1}
+                fill={masked ? "var(--bg-2)" : color(v)}
+                opacity={masked ? 0.5 : dimmed ? 0.25 : 1}
                 stroke={selectedQuery === q && v > 0.001 ? "var(--brass)" : "transparent"}
                 strokeWidth={selectedQuery === q ? 1 : 0}
                 onMouseEnter={() => setHover({ q, k })}
@@ -110,7 +129,10 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
         )}
         {hover && (
           <text x={width - 8} y={16} fill="var(--text-0)" fontSize={11} textAnchor="end" fontFamily="monospace">
-            q{hover.q}→k{hover.k}: {(matrix[hover.q][hover.k] as number).toFixed(4)}
+            q{hover.q}→k{hover.k}:{" "}
+            {diffMatrix
+              ? `|Δ| ${(diffMatrix[hover.q][hover.k] as number).toFixed(4)}`
+              : (matrix[hover.q][hover.k] as number).toFixed(4)}
           </text>
         )}
       </svg>
@@ -134,9 +156,26 @@ export default function AttentionHeatmap({ att, head }: { att: AttentionPattern 
       <div className="legend-scale">
         <span>0</span>
         <div className="legend-bar" style={{ background: "linear-gradient(90deg, rgb(43,48,45), rgb(223,121,90))" }} />
-        <span>attention weight 1.0 · rows sum to 1 · click a row token to inspect it</span>
+        <span>attention weight 1.0 · rows sum to 1 · click a row token to inspect it · dark gray = causally masked (key after query)</span>
+        {onCompareHead && (
+          <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
+            compare with
+            <select
+              value={compareHead ?? head}
+              onChange={(e) => onCompareHead(Number(e.target.value))}
+              style={{ width: "auto", padding: "0.1rem 0.3rem" }}
+            >
+              {att.pattern.map((_, h) => (
+                <option key={h} value={h}>
+                  head {h}{h === head ? " (diff off)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <span className="mono" style={{ marginLeft: "auto" }}>
-          {att.hook} · head {head} · shape {att.shape.join("×")}
+          {att.hook} · head {head}
+          {diffMatrix ? ` |Δ| vs head ${compareHead}` : ""} · shape {att.shape.join("×")}
         </span>
       </div>
     </div>

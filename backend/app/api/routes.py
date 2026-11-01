@@ -30,9 +30,20 @@ class PredictRequest(BaseModel):
     candidate_b: str | None = Field(default=None, max_length=32)
 
 
+class QuestionRequest(BaseModel):
+    context: str = Field(min_length=1, max_length=MAX_PROMPT_CHARS)
+    question: str = Field(min_length=1, max_length=MAX_PROMPT_CHARS)
+    candidates: list[str] = Field(min_length=2, max_length=5)
+    template: str | None = Field(default=None, max_length=MAX_PROMPT_CHARS)
+
+
 class ContinueRequest(BaseModel):
     text: str = Field(min_length=1, max_length=MAX_PROMPT_CHARS)
     n_tokens: int = Field(default=5, ge=1, le=8)
+    mode: str = Field(default="greedy", pattern="^(greedy|sample)$")
+    temperature: float = Field(default=1.0, ge=0.05, le=2.0)
+    top_k: int = Field(default=0, ge=0, le=50)
+    seed: int | None = Field(default=None, ge=0)
 
 
 class InspectRequest(BaseModel):
@@ -100,11 +111,27 @@ def predict(req: PredictRequest) -> dict:
         raise HTTPException(status_code=500, detail=f"{type(e).__name__}: {e}")
 
 
+@router.post("/question")
+def question(req: QuestionRequest) -> dict:
+    try:
+        meta = ADAPTER.metadata()
+        return {"model": meta, **engine.score_question_candidates(
+            req.context, req.question, req.candidates, req.template
+        )}
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"{type(e).__name__}: {e}")
+
+
 @router.post("/continue")
 def continue_text(req: ContinueRequest) -> dict:
     try:
         meta = ADAPTER.metadata()
-        return {"model": meta, **engine.continue_text(req.text, req.n_tokens)}
+        return {
+            "model": meta,
+            **engine.continue_text(
+                req.text, req.n_tokens, req.mode, req.temperature, req.top_k, req.seed
+            ),
+        }
     except ModelNotLoadedError:
         raise HTTPException(status_code=503, detail="model not loaded yet")
     except Exception as e:
@@ -182,6 +209,14 @@ def cancel_experiment(job_id: str) -> dict:
 @router.get("/experiments")
 def experiments() -> dict:
     return {"jobs": [j.job_id for j in RUNNER.recent()], "saved": db.list_experiments()}
+
+
+@router.delete("/experiments/{exp_id}")
+def delete_experiment(exp_id: str) -> dict:
+    deleted = db.delete_experiment(exp_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="experiment not found")
+    return {"deleted": True, "id": exp_id}
 
 
 @router.get("/experiments/{job_id}/export")

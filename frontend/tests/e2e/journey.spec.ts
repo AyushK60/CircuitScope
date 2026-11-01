@@ -144,22 +144,30 @@ test.describe("CircuitScope core journey", () => {
 
   test("playground: greedy continuation generates real text", async ({ page }) => {
     await page.goto("/#/playground");
-    await page.getByRole("button", { name: /Continue the clean prompt/ }).click();
+    await expect(page.getByText(/GPT-2 Small predicts text continuations/)).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: "Generate 5 tokens" }).click();
     await expect(page.getByText(/greedy \(argmax\)/)).toBeVisible({ timeout: 30_000 });
     // the continuation extends the prompt (measured tokens rendered)
     await expect(page.getByText(/step 1:/)).toBeVisible();
+    // sampling mode exposes its parameters honestly
+    await page.getByLabel("mode").selectOption("sample");
+    await expect(page.getByText(/temp 0\.90/)).toBeVisible();
   });
 
-  test("neural network lab: training genuinely reduces loss", async ({ page }) => {
+  test("neural network lab: 4-6-6-5-3 network computes live", async ({ page }) => {
     await page.goto("/#/lab");
     await expect(page.getByRole("heading", { name: "Neural Network Lab" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/Educational simulation/)).toBeVisible();
-    await page.getByRole("button", { name: "Train 100 steps" }).click();
-    await page.getByRole("button", { name: "Train 100 steps" }).click();
-    await expect(page.getByText(/step 200 · loss/)).toBeVisible({ timeout: 15_000 });
-    const lossText = await page.locator(".lab-stats").textContent();
-    const loss = parseFloat(lossText!.match(/loss ([\d.]+)/)![1]);
-    expect(loss).toBeLessThan(0.7); // two-moons BCE after 200 steps must be well under chance
+    await expect(page.getByText(/Educational Feedforward Network — separate from GPT-2 Small/)).toBeVisible();
+    // exact connection count stated in the accessible description
+    await expect(page.getByRole("img", { name: /105 connections/ })).toBeVisible();
+    // moving an input changes the computed output probabilities
+    const slider = page.getByLabel(/in·1/);
+    await slider.fill("-2");
+    await expect(page.getByText(/class A/).first()).toBeVisible();
+    // neuron inspection shows the real pre-activation
+    await page.getByRole("button", { name: /Neuron layer 3 index 1/ }).click();
+    await expect(page.getByText(/pre-activation z/)).toBeVisible();
+    await expect(page.getByText(/ReLU: max\(0, z\)/)).toBeVisible();
   });
 
   test("no major console errors across the journey", async ({ page }) => {

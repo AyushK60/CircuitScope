@@ -5,6 +5,7 @@ import {
   type ExperimentRecord,
   type Health,
   type Prediction,
+  type QuestionResult,
   type SavedExperiment,
   type Tokenization,
 } from "../api/client";
@@ -125,8 +126,21 @@ export default function Playground({ health }: { health: Health | null }) {
   const [comparisonError, setComparisonError] = useState<string | null>(null);
   const [contResult, setContResult] = useState<ContinueResult | null>(null);
   const [contBusy, setContBusy] = useState(false);
+  const [contMode, setContMode] = useState<"greedy" | "sample">("greedy");
+  const [contTemp, setContTemp] = useState(0.9);
+  const [contTopK, setContTopK] = useState(20);
+  const [contSeed, setContSeed] = useState(1234);
   const [wizardStep, setWizardStep] = useState(0);
   const [history, setHistory] = useState<SavedExperiment[]>([]);
+  const [qContext, setQContext] = useState("The father asked his son for water because the father was sick.");
+  const [qQuestion, setQQuestion] = useState("Who was sick?");
+  const [qCandidates, setQCandidates] = useState(" father, son");
+  const [qResult, setQResult] = useState<QuestionResult | null>(null);
+  const [qBusy, setQBusy] = useState(false);
+  const [qError, setQError] = useState<string | null>(null);
+  const [delConfirm, setDelConfirm] = useState<string | null>(null);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+  const [compareData, setCompareData] = useState<{ id: string; delta: number | null; recovery: number | null }[]>([]);
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [record, setRecord] = useState<ExperimentRecord | null>(null);
@@ -218,11 +232,74 @@ export default function Playground({ health }: { health: Health | null }) {
       .catch((e) => setError(String(e.message ?? e)));
   };
 
-  const runContinuation = () => {
-    setContBusy(true);
+  const runQuestion = () => {
+    setQBusy(true);
+    setQError(null);
     api
-      .continue(clean, 5)
-      .then(setContResult)
+      .question({
+        context: qContext,
+        question: qQuestion,
+        candidates: qCandidates.split(",").map((c) => (c.startsWith(" ") ? c : " " + c.trim())).filter((c) => c.length > 1),
+      })
+      .then(setQResult)
+      .catch((e) => setQError(String(e.message ?? e)))
+      .finally(() => setQBusy(false));
+  };
+
+  const toggleCompare = (id: string) => {
+    setCompareIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : ids.length >= 2 ? [ids[1], id] : [...ids, id]));
+  };
+
+  const runCompare = () => {
+    Promise.all(compareIds.map((id) => api.getSavedExperiment(id)))
+      .then((rs) =>
+        setCompareData(
+          rs.map((r) => ({
+            id: r.id,
+            delta: r.results?.metrics?.Delta ?? null,
+            recovery: r.results?.metrics?.Recovery ?? null,
+          })),
+        ),
+      )
+      .catch((e) => setError(String(e.message ?? e)));
+  };
+
+  const deleteSaved = (id: string) => {
+    api
+      .deleteExperiment(id)
+      .then(() => {
+        setDelConfirm(null);
+        refreshHistory();
+        if (jobId === id) {
+          setRecord(null);
+          setRunState("idle");
+        }
+      })
+      .catch((e) => setError(String(e.message ?? e)));
+  };
+
+  const runContinuation = (nTokens: number) => {
+    setContBusy(true);
+    const base = contResult?.text_final ?? clean;
+    api
+      .continue(base, nTokens, {
+        mode: contMode,
+        temperature: contTemp,
+        top_k: contTopK,
+        seed: contSeed,
+      })
+      .then((r) => {
+        if (contResult && base !== clean) {
+          // step mode: append the new tokens to the displayed run
+          setContResult({
+            ...r,
+            text_start: contResult.text_start,
+            steps: [...contResult.steps, ...r.steps.map((s) => ({ ...s, step: contResult.steps.length + s.step }))],
+          });
+        } else {
+          setContResult(r);
+        }
+      })
       .catch((e) => setError(String(e.message ?? e)))
       .finally(() => setContBusy(false));
   };
@@ -247,7 +324,40 @@ export default function Playground({ health }: { health: Health | null }) {
 
       {ready && (
         <div className="panel" style={{ borderColor: "var(--brass)" }}>
-          <h2>Guided experiment</h2>
+          <h2>Guided experiment tour</h2>
+          <p className="inspector-meta" style={{ marginBottom: "0.6rem" }}>
+            Curated examples — each configures the real controls below and runs actual model actions.
+            Nothing is simulated, and measured outcomes may differ from any expectation.
+          </p>
+          <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", marginBottom: "0.8rem" }}>
+            {[
+              { id: "ramu", label: "① What comes next?", clean: "Ramu was hungry. He went outside to buy", corr: "Ramu was hungry. He went outside to buy", cand: [" food", " bread"] },
+              { id: "father", label: "② Who was sick?", clean: "The father asked his son for water because the father was sick. The father was sick, so the", corr: "The father asked his son for water because the father was sick. The father was sick, so the", cand: [" father", " son"] },
+              { id: "ioi", label: "③ Activation patch", clean: PRESET.clean, corr: PRESET.corrupted, cand: [PRESET.candidate_a, PRESET.candidate_b] },
+            ].map((ex) => (
+              <button
+                key={ex.id}
+                onClick={() => {
+                  setClean(ex.clean);
+                  setCorrupted(ex.corr);
+                  setCandA(ex.cand[0]);
+                  setCandB(ex.cand[1]);
+                  setWizardStep(0);
+                  setRunState("idle");
+                  setRecord(null);
+                }}
+              >
+                {ex.label}
+              </button>
+            ))}
+            <button
+              onClick={() => {
+                window.location.hash = "#/explorer?mode=flow";
+              }}
+            >
+              ④ Attention inspection →
+            </button>
+          </div>
           <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
             A four-step walkthrough of one complete intervention. Each step uses the same real controls
             below — nothing is simulated.
@@ -553,16 +663,52 @@ export default function Playground({ health }: { health: Health | null }) {
       <div className="panel">
         <h2>Custom prediction & continuation</h2>
         <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
-          Continue any prompt with deterministic greedy decoding — the model appends its top token, then
-          re-runs, up to 8 steps. Each step records the measured top candidates.
+          Predict & Continue: the real model appends tokens to the prompt, re-running on the growing
+          sequence. Greedy is deterministic; sampling uses temperature, top-k and a reproducible seed.
+          Generate one token at a time to step through the run.
         </p>
-        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
-          <button className="primary" onClick={runContinuation} disabled={!ready || contBusy}>
-            {contBusy ? "Generating…" : "Continue the clean prompt by 5 tokens"}
+        <div className="state-banner warn" style={{ marginBottom: "0.8rem" }}>
+          GPT-2 Small predicts text continuations. Its generations are not guaranteed to be factually
+          accurate or instruction-following.
+        </div>
+        <div style={{ display: "flex", gap: "0.8rem", alignItems: "center", flexWrap: "wrap" }}>
+          <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            mode
+            <select value={contMode} onChange={(e) => { setContMode(e.target.value as "greedy" | "sample"); setContResult(null); }} style={{ width: "auto" }}>
+              <option value="greedy">greedy</option>
+              <option value="sample">sample</option>
+            </select>
+          </label>
+          {contMode === "sample" && (
+            <>
+              <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                temp {contTemp.toFixed(2)}
+                <input type="range" min={0.05} max={2} step={0.05} value={contTemp} onChange={(e) => setContTemp(Number(e.target.value))} />
+              </label>
+              <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                top-k {contTopK || "off"}
+                <input type="range" min={0} max={50} step={1} value={contTopK} onChange={(e) => setContTopK(Number(e.target.value))} />
+              </label>
+              <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                seed
+                <input type="number" value={contSeed} onChange={(e) => setContSeed(Number(e.target.value))} style={{ width: "6rem" }} />
+              </label>
+            </>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap", marginTop: "0.8rem" }}>
+          <button className="primary" onClick={() => runContinuation(5)} disabled={!ready || contBusy}>
+            {contBusy ? "Generating…" : "Generate 5 tokens"}
+          </button>
+          <button onClick={() => runContinuation(1)} disabled={!ready || contBusy}>
+            + 1 token
+          </button>
+          <button onClick={() => setContResult(null)} disabled={!contResult}>
+            Reset to prompt
           </button>
           {contResult && (
             <span className="inspector-meta mono">
-              {contResult.decoding} · {contResult.elapsed_seconds.toFixed(2)} s
+              {contResult.decoding} · {contResult.steps.length} tokens total
             </span>
           )}
         </div>
@@ -588,6 +734,81 @@ export default function Playground({ health }: { health: Health | null }) {
       </div>
 
       <div className="panel">
+        <h2>Question &amp; Candidate Explorer</h2>
+        <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
+          A context, a question, and candidate answers. GPT-2 is a next-token model, <strong>not</strong> a
+          question-answering assistant — this compares text-continuation scores under a fixed prompt
+          template. Multi-token candidates are scored by the sum of their conditional token
+          log-probabilities, never by the first token alone.
+        </p>
+        <div className="grid-2">
+          <div>
+            <label htmlFor="q-context" style={{ fontSize: "0.8rem", color: "var(--text-2)" }}>Context</label>
+            <textarea id="q-context" rows={2} value={qContext} onChange={(e) => setQContext(e.target.value)} />
+            <label htmlFor="q-question" style={{ fontSize: "0.8rem", color: "var(--text-2)", display: "block", marginTop: "0.5rem" }}>Question</label>
+            <input id="q-question" type="text" value={qQuestion} onChange={(e) => setQQuestion(e.target.value)} />
+            <label htmlFor="q-cands" style={{ fontSize: "0.8rem", color: "var(--text-2)", display: "block", marginTop: "0.5rem" }}>
+              Candidates (comma-separated, 2–5)
+            </label>
+            <input id="q-cands" type="text" value={qCandidates} onChange={(e) => setQCandidates(e.target.value)} />
+            <div style={{ display: "flex", gap: "0.6rem", marginTop: "0.8rem", flexWrap: "wrap" }}>
+              <button className="primary" onClick={runQuestion} disabled={!ready || qBusy}>
+                {qBusy ? "Scoring…" : "Score candidates"}
+              </button>
+              <button onClick={() => { setQContext("The father asked his son for water because the father was sick."); setQQuestion("Who was sick?"); setQCandidates(" father, son"); setQResult(null); }}>
+                Father/son example
+              </button>
+            </div>
+            {qError && <div className="state-banner error" style={{ marginTop: "0.6rem" }}>{qError}</div>}
+          </div>
+          <div>
+            {qResult && (
+              <>
+                <p className="inspector-meta mono" style={{ background: "var(--bg-2)", padding: "0.5rem 0.7rem", borderRadius: 6 }}>
+                  template: {qResult.prompt.split("\n").join(" ⏎ ")}
+                </p>
+                <div className="bar-row" key="hdr" style={{ marginTop: "0.6rem" }}>
+                  <span className="label" style={{ color: "var(--text-2)" }}>candidate</span>
+                  <span className="inspector-meta">total log-P · mean · first-token P</span>
+                </div>
+                {qResult.candidates.map((c) => {
+                  const maxLP = Math.max(...qResult.candidates.map((x) => x.total_logprob));
+                  const minLP = Math.min(...qResult.candidates.map((x) => x.total_logprob));
+                  const frac = (c.total_logprob - minLP) / Math.max(maxLP - minLP, 1e-9);
+                  return (
+                    <div className="bar-row" key={c.candidate}>
+                      <span className="label">{c.candidate}</span>
+                      <div className="bar-track">
+                        <div className="bar-fill" style={{ left: 0, width: `${8 + frac * 92}%`, background: c.candidate === qResult.preferred_by_total_logprob ? "var(--accent)" : "var(--bg-3)" }} />
+                      </div>
+                      <span className="value">{c.total_logprob.toFixed(2)}</span>
+                      <span className="inspector-meta">
+                        mean {c.mean_logprob.toFixed(2)} · first-P {(c.first_token_prob * 100).toFixed(2)}% · {c.n_tokens} tok
+                      </span>
+                    </div>
+                  );
+                })}
+                <p className="inspector-meta" style={{ marginTop: "0.6rem" }}>
+                  Measured preference by total log-probability:{" "}
+                  <strong>{JSON.stringify(qResult.preferred_by_total_logprob)}</strong>.{" "}
+                  {qResult.length_warning
+                    ? "⚠ candidates have different token lengths — compare mean log-P as well; raw totals favor longer candidates."
+                    : "Candidates have equal token lengths; total and mean log-P rank them identically."}{" "}
+                  These are continuation scores — not a claim that GPT-2 answers questions correctly.
+                </p>
+              </>
+            )}
+            {!qResult && (
+              <div className="state-banner info">
+                Enter a context, question and candidates, then score. Scores are conditional log-probabilities
+                under the fixed template — see the method note in the result.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
         <h2>Experiment history</h2>
         <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
           Completed experiments persisted in the local database. Loading one restores its exact stored
@@ -601,18 +822,50 @@ export default function Playground({ health }: { health: Health | null }) {
             <tbody>
               {history.map((h) => (
                 <tr key={h.id}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select experiment ${h.id} for comparison`}
+                      checked={compareIds.includes(h.id)}
+                      onChange={() => toggleCompare(h.id)}
+                    />
+                  </td>
                   <td>{new Date(h.created_at * 1000).toLocaleTimeString()}</td>
-                  <td>{String((h.config as Record<string, unknown>).hook ?? "")}</td>
+                  <td>intervention · {String((h.config as Record<string, unknown>).hook ?? "")}</td>
                   <td>
                     pos {JSON.stringify((h.config as Record<string, unknown>).positions ?? [])}
                   </td>
                   <td>
-                    <button onClick={() => loadSaved(h.id)}>Load results</button>
+                    <button onClick={() => loadSaved(h.id)}>Load</button>{" "}
+                    {delConfirm === h.id ? (
+                      <>
+                        <button className="danger" onClick={() => deleteSaved(h.id)}>
+                          Confirm delete
+                        </button>
+                        <button className="ghost" onClick={() => setDelConfirm(null)}>
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <button className="danger" onClick={() => setDelConfirm(h.id)}>
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
+        )}
+        {compareIds.length === 2 && (
+          <div style={{ marginTop: "0.8rem", display: "flex", gap: "0.6rem", alignItems: "center", flexWrap: "wrap" }}>
+            <button onClick={runCompare}>Compare selected (Δ / Recovery)</button>
+            {compareData.map((c) => (
+              <span key={c.id} className="inspector-meta mono">
+                {c.id.slice(0, 6)}: Δ {c.delta?.toFixed(3) ?? "n/a"} · rec {c.recovery?.toFixed(3) ?? "n/a"}
+              </span>
+            ))}
           </div>
         )}
       </div>

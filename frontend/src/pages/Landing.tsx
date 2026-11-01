@@ -112,7 +112,7 @@ export default function Landing({
   navigate,
 }: {
   health: Health | null;
-  navigate: (r: "explorer" | "playground" | "learn") => void;
+  navigate: (r: "explorer" | "playground" | "learn" | "lab") => void;
 }) {
   const [demo, setDemo] = useState<Prediction | null>(null);
   const [demoError, setDemoError] = useState<string | null>(null);
@@ -157,7 +157,8 @@ export default function Landing({
               <button className="primary" onClick={() => navigate("explorer")}>
                 Explore a real model →
               </button>
-              <button onClick={() => navigate("playground")}>Enter the laboratory</button>
+              <button onClick={() => navigate("playground")}>Predict &amp; Continue</button>
+              <button onClick={() => navigate("lab")}>Neural Network Lab</button>
             </div>
             <p className="schematic-note">
               <span className={live ? "live-badge" : "static-badge"}>

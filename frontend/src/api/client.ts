@@ -76,6 +76,28 @@ export interface ContinueStep {
   top_predictions: Candidate[];
 }
 
+export interface QuestionScore {
+  candidate: string;
+  tokens: string[];
+  token_ids: number[];
+  n_tokens: number;
+  total_logprob: number;
+  mean_logprob: number;
+  first_token_prob: number;
+  per_token_logprob: number[];
+}
+
+export interface QuestionResult {
+  prompt: string;
+  context: string;
+  question: string;
+  candidates: QuestionScore[];
+  preferred_by_total_logprob: string;
+  method: string;
+  length_warning: boolean;
+  elapsed_seconds: number;
+}
+
 export interface ContinueResult {
   text_start: string;
   text_final: string;
@@ -185,11 +207,22 @@ export const api = {
         }),
       },
     ),
-  continue: (text: string, nTokens = 5) =>
+  continue: (
+    text: string,
+    nTokens = 5,
+    opts?: { mode?: "greedy" | "sample"; temperature?: number; top_k?: number; seed?: number },
+  ) =>
     call<{ model: ModelMeta } & ContinueResult>("/api/continue", {
       method: "POST",
-      body: JSON.stringify({ text, n_tokens: nTokens }),
+      body: JSON.stringify({ text, n_tokens: nTokens, ...opts }),
     }),
+  question: (body: { context: string; question: string; candidates: string[]; template?: string }) =>
+    call<{ model: ModelMeta } & QuestionResult>("/api/question", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  deleteExperiment: (id: string) =>
+    call<{ deleted: boolean }>(`/api/experiments/${id}`, { method: "DELETE" }),
   listExperiments: () =>
     call<{ jobs: string[]; saved: SavedExperiment[] }>("/api/experiments"),
   getSavedExperiment: (id: string) => call<SavedExperimentFull>(`/api/experiments/${id}`),
