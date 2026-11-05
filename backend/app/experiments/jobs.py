@@ -20,6 +20,7 @@ from ..config import (
 )
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER
+from ..storage import db
 from .metrics import compare_metrics
 
 
@@ -95,6 +96,11 @@ def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) ->
     if toks_clean.shape != toks_corr.shape:
         raise ExperimentValidationError(
             f"clean/corrupted prompts are not token-aligned: {toks_clean.shape[1]} vs {toks_corr.shape[1]} tokens"
+        )
+    if norm["clean_text"] == norm["corrupted_text"]:
+        raise ExperimentValidationError(
+            "clean and corrupted prompts are identical — the patch would have no meaningful contrast. "
+            "Provide a corrupted variant (e.g. swap the subject) as in the John/Mary preset."
         )
     seq = toks_clean.shape[1]
     if any(p >= seq for p in norm["positions"]):
@@ -179,6 +185,11 @@ class ExperimentRunner:
                 job.results = results
                 job.status = "complete"
                 job.finished_at = time.time()
+            try:
+                db.save_experiment(job.config, results, "complete", exp_id=job_id)
+            except Exception as e:
+                import sys
+                print(f"PERSIST WARNING: experiment results not saved: {type(e).__name__}: {e}", file=sys.stderr)
         except ExperimentValidationError as e:
             with self._lock:
                 job.status = "cancelled" if "cancelled" in str(e) else "failed"

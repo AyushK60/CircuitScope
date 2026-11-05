@@ -41,6 +41,18 @@ export default function Explorer({ health }: { health: Health | null }) {
 
   const meta: ModelMeta | null = health?.model_loaded ? health.model : null;
   const ready = meta !== null;
+  // the flow capture holds every layer's attention for the same run — derive
+  // the displayed pattern from it so the heatmap can never go stale when the
+  // user navigates to a different block
+  const attentionForLayer = useMemo(() => {
+    if (!flow) return attention;
+    return {
+      hook: `blocks.${layer}.attn.hook_pattern`,
+      shape: [12, flow.tokens.length, flow.tokens.length],
+      tokens: flow.tokens,
+      pattern: flow.blocks[layer].attention,
+    };
+  }, [flow, layer, attention]);
 
   const runCapture = (t: string, l: number) => {
     if (!ready) return;
@@ -195,7 +207,7 @@ export default function Explorer({ health }: { health: Health | null }) {
               level={level}
               layer={layer}
               head={head}
-              attention={attention}
+              attention={attentionForLayer}
               onLayer={(l) => { setLayer(l); setLevel("block"); }}
               onHead={(h) => { setHead(h); setLevel("head"); }}
               runText={runText}

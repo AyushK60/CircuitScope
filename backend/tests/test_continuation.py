@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.app.experiments.jobs import ExperimentValidationError
 from backend.app.main import create_app
 from backend.app.storage import db
 
@@ -144,3 +145,52 @@ def test_question_validation(client):
         json={"context": "a", "question": "b", "candidates": [" x", " y"], "template": "no placeholders"},
     )
     assert bad_template.status_code == 422
+
+
+def test_identical_prompts_rejected(client):
+    from backend.app.experiments.jobs import execute_experiment
+    with pytest.raises(ExperimentValidationError, match="identical"):
+        execute_experiment(
+            {
+                "clean_text": "John and Mary went to the shop. John gave a book to",
+                "corrupted_text": "John and Mary went to the shop. John gave a book to",
+                "hook": "blocks.5.hook_out",
+                "positions": [9],
+                "candidate_a": " Mary",
+                "candidate_b": " John",
+            }
+        )
+
+
+def test_completed_experiment_is_persisted_with_results(client):
+    r = client.post(
+        "/api/experiments",
+        json={
+            "clean_text": "John and Mary went to the shop. John gave a book to",
+            "corrupted_text": "John and Mary went to the shop. Mary gave a book to",
+            "hook": "blocks.5.hook_out",
+            "positions": [9],
+            "candidate_a": " Mary",
+            "candidate_b": " John",
+        },
+    )
+    import time
+    job_id = r.json()["job_id"]
+    for _ in range(240):
+        st = client.get(f"/api/experiments/{job_id}").json()
+        if st["status"] in ("complete", "failed"):
+            break
+        time.sleep(0.25)
+    assert st["status"] == "complete"
+    # the runner persists asynchronously right after completion; poll briefly
+    saved = None
+    for _ in range(40):
+        saved = db.get_experiment(job_id)
+        if saved is not None and saved["results"] is not None:
+            break
+        time.sleep(0.1)
+    import sys
+    last = db._conn.execute('SELECT id, status FROM experiments ORDER BY created_at DESC LIMIT 1').fetchone()
+    assert saved is not None and saved["status"] == "complete"
+    assert saved["results"] is not None
+    assert saved["results"]["metrics"]["Recovery"] == pytest.approx(0.9148, abs=5e-3)

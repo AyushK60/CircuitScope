@@ -38,13 +38,19 @@ def init(db_path: str | None = None) -> None:
         _conn.commit()
 
 
-def save_experiment(config: dict, results: dict | None, status: str, error: str | None = None) -> str:
+def save_experiment(
+    config: dict,
+    results: dict | None,
+    status: str,
+    error: str | None = None,
+    exp_id: str | None = None,
+) -> str:
     if _conn is None:
         init()
-    exp_id = uuid.uuid4().hex[:12]
+    exp_id = exp_id or uuid.uuid4().hex[:12]
     with _CONN_LOCK:
         _conn.execute(
-            "INSERT INTO experiments (id, created_at, status, config, results, error) VALUES (?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO experiments (id, created_at, status, config, results, error) VALUES (?,?,?,?,?,?)",
             (
                 exp_id,
                 time.time(),

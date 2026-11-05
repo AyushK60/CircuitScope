@@ -401,8 +401,10 @@ export default function Playground({ health }: { health: Health | null }) {
           )}
           {wizardStep === 2 && (
             <p className="inspector-meta">
-              Step 3 — run the patch: three real forward passes (clean capture, corrupted, patched). Press
-              "Run experiment" below if you have not already.
+              Step 3 — run the patch: three real forward passes (clean capture, corrupted, patched).{" "}
+              {clean === corrupted
+                ? "⚠ This example is prediction-focused: the clean and corrupted prompts are identical, so a patch would have no contrast. Switch to example ③ for a valid patch pair."
+                : 'Press "Run experiment" below if you have not already.'}
             </p>
           )}
           {wizardStep === 3 && (
@@ -831,7 +833,11 @@ export default function Playground({ health }: { health: Health | null }) {
                     />
                   </td>
                   <td>{new Date(h.created_at * 1000).toLocaleTimeString()}</td>
-                  <td>intervention · {String((h.config as Record<string, unknown>).hook ?? "")}</td>
+                  <td>
+                    {(h.config as Record<string, unknown>).hook
+                      ? `intervention · ${String((h.config as Record<string, unknown>).hook)}`
+                      : "candidate comparison"}
+                  </td>
                   <td>
                     pos {JSON.stringify((h.config as Record<string, unknown>).positions ?? [])}
                   </td>
