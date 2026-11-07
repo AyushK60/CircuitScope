@@ -142,7 +142,7 @@ export default function Landing({
     <main>
       {/* ================= HERO ================= */}
       <section className="hero">
-        <div className="hero-grid">
+        <div className="hero-grid hero-contained">
           <div>
             <div className="kicker">NEURAL NETWORK OBSERVATORY · LOCAL-FIRST</div>
             <h1>

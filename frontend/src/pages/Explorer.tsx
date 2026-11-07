@@ -200,7 +200,7 @@ export default function Explorer({ health }: { health: Health | null }) {
               }}
             />
           </div>
-          <div className="panel">
+          <div className="panel inspector-sticky">
             <InspectorConsole
               meta={meta}
               flow={flow}

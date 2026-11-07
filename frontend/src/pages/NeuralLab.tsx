@@ -95,9 +95,9 @@ export default function NeuralLab() {
 
       <div className="panel">
         <h3>Inputs</h3>
-        <div className="lab-controls">
+        <div className="lab-input-grid">
           {inputs.map((v, i) => (
-            <label key={i} htmlFor={`nlin${i}`} className="mono" style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <label key={i} htmlFor={`nlin${i}`} className="mono lab-input">
               {INPUT_LABELS[i]}
               <input
                 id={`nlin${i}`}
@@ -109,9 +109,8 @@ export default function NeuralLab() {
                 onChange={(e) =>
                   setInputs((arr) => arr.map((x, j) => (j === i ? Number(e.target.value) : x)))
                 }
-                style={{ width: "7rem" }}
               />
-              {v.toFixed(1)}
+              <span className="lab-input-value">{v.toFixed(1)}</span>
             </label>
           ))}
           <button onClick={reset}>Reset</button>

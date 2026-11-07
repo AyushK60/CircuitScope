@@ -175,7 +175,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 .hero h1 { max-width: 22ch; font-size: clamp(2.2rem, 5vw, 3.4rem); position: relative; }
 .hero .lede { max-width: 60ch; color: var(--text-1); font-size: 1.15rem; margin-top: 1rem; position: relative; }
 .hero-actions { display: flex; gap: 0.8rem; margin-top: 2rem; flex-wrap: wrap; position: relative; }
-.hero-actions button { padding: 0.7rem 1.6rem; font-size: 1.02rem; }
+.hero-actions button { padding: 0.65rem 1.25rem; font-size: 0.98rem; white-space: nowrap; }
 
 .pillars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 3rem 0; }
 @media (max-width: 800px) { .pillars { grid-template-columns: 1fr; } }
@@ -552,3 +552,30 @@ code { overflow-wrap: anywhere; }
 }
 
 .table-scroll { overflow-x: auto; }
+
+/* ---- signature polish ---- */
+
+.hero-contained { max-width: 1180px; margin: 0 auto; padding: 0 1.5rem; }
+@media (max-width: 900px) { .hero-contained { padding: 0; } }
+
+input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
+
+.lab-input-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.6rem 1.4rem;
+  align-items: center;
+}
+.lab-input { display: flex; align-items: center; gap: 0.55rem; }
+.lab-input input[type="range"] { flex: 1; width: auto; }
+.lab-input-value {
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+  color: var(--text-0);
+}
+
+.inspector-sticky { position: sticky; top: 74px; }
+@media (max-width: 900px) { .inspector-sticky { position: static; } }
+
+.hero-viz .hero-model { filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.3)); }
