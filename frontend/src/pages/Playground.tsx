@@ -719,9 +719,14 @@ export default function Playground({ health }: { health: Health | null }) {
             <p className="mono" style={{ fontSize: "0.95rem", background: "var(--bg-2)", padding: "0.6rem 0.8rem", borderRadius: 6 }}>
               {contResult.text_start}
               {contResult.steps.map((s) => (
-                <span key={s.step} title={`step ${s.step}: p=${s.chosen_prob}`} style={{ color: "var(--accent)" }}>
+                <a
+                  key={s.step}
+                  href={`#/explorer?text=${encodeURIComponent(s.input_so_far)}`}
+                  title={`step ${s.step}: p=${s.chosen_prob} — click to inspect this exact prefix`}
+                  style={{ color: "var(--accent)", textDecoration: "none" }}
+                >
                   {s.chosen}
-                </span>
+                </a>
               ))}
             </p>
             <p className="inspector-meta">
@@ -730,6 +735,8 @@ export default function Playground({ health }: { health: Health | null }) {
                   step {s.step}: {JSON.stringify(s.chosen)} p={s.chosen_prob.toFixed(3)}
                 </span>
               ))}
+              <br />
+              Click any generated token above to inspect that exact prefix in the Model Explorer.
             </p>
           </div>
         )}

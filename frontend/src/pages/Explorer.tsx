@@ -23,15 +23,17 @@ export default function Explorer({ health }: { health: Health | null }) {
     window.location.hash.includes("mode=flow") ? "flow" : "anatomy",
   );
   const [level, setLevel] = useState<Level>("model");
-  const initialHook = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("hook"), []);
+  const urlParams = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? ""), []);
+  const initialHook = useMemo(() => urlParams.get("hook"), []);
+  const initialText = useMemo(() => urlParams.get("text") ?? EXAMPLE, []);
   const [layer, setLayer] = useState<number>(() => {
     const m = initialHook?.match(/blocks\.(\d+)\./);
     return m ? Math.min(11, Math.max(0, Number(m[1]))) : 5;
   });
   const [head, setHead] = useState<number>(0);
   const [compareHead, setCompareHead] = useState<number | null>(null);
-  const [text, setText] = useState(EXAMPLE);
-  const [runText, setRunText] = useState(EXAMPLE);
+  const [text, setText] = useState(initialText);
+  const [runText, setRunText] = useState(initialText);
   const [tokenization, setTokenization] = useState<Tokenization | null>(null);
   const [attention, setAttention] = useState<AttentionPattern | null>(null);
   const [flow, setFlow] = useState<FlowData | null>(null);
@@ -78,6 +80,24 @@ export default function Explorer({ health }: { health: Health | null }) {
     if (ready && !flow && !busy) runCapture(runText, layer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
+
+  // inspect links from the Playground carry a ?text= prefix; re-capture on
+  // hash changes even when this page is already mounted
+  useEffect(() => {
+    const onHash = () => {
+      const t = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("text");
+      if (t && t !== runText && t !== text) {
+        setText(t);
+        setRunText(t);
+        setFlow(null);
+        setAttention(null);
+        runCapture(t, layer);
+      }
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runText, text, layer]);
 
   const crumbs = useMemo(() => {
     const items: { label: string; go: () => void }[] = [

@@ -22,6 +22,9 @@ Open **http://localhost:5173**.
    top candidates. Press **Generate 5 tokens** (greedy), then **+ 1 token** to
    step. Switch the mode to *sample* to show temperature / top-k / seed. Read
    the honest warning: generations are not guaranteed factual.
+2.5. **Generated-prefix inspection** — in the continuation panel, click any
+   generated token: the Model Explorer opens pre-loaded with that exact prefix
+   (`?text=`), re-capturing all measurements for it.
 3. **Question & Candidate Explorer** — use the father/son preset and press
    **Score candidates**. Explain: these are *continuation log-probabilities
    under a fixed template*, not answers; multi-token candidates use summed

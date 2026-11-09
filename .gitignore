@@ -24,3 +24,6 @@ Thumbs.db
 playwright-report/
 test-results/
 frontend/coverage/
+
+# release packaging artifacts
+release/
