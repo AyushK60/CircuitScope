@@ -12,7 +12,6 @@ from backend.app.storage import db
 
 @pytest.fixture(scope="module")
 def client(bridge):
-    db.init("outputs/test_experiments.db")
     with TestClient(create_app()) as c:
         yield c
 
@@ -189,8 +188,6 @@ def test_completed_experiment_is_persisted_with_results(client):
         if saved is not None and saved["results"] is not None:
             break
         time.sleep(0.1)
-    import sys
-    last = db._conn.execute('SELECT id, status FROM experiments ORDER BY created_at DESC LIMIT 1').fetchone()
     assert saved is not None and saved["status"] == "complete"
     assert saved["results"] is not None
     assert saved["results"]["metrics"]["Recovery"] == pytest.approx(0.9148, abs=5e-3)

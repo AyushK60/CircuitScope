@@ -6,6 +6,13 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from backend.app.model_runtime.loader import ADAPTER  # noqa: E402
+from backend.app.storage import db  # noqa: E402
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _isolated_db(tmp_path_factory):
+    """Tests never touch the real outputs/experiments.db."""
+    db.init(str(tmp_path_factory.mktemp("db") / "test_experiments.db"))
 
 
 @pytest.fixture(scope="session")

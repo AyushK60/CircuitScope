@@ -16,6 +16,10 @@ _conn: sqlite3.Connection | None = None
 _db_path: str | None = None
 
 
+def is_initialized() -> bool:
+    return _conn is not None
+
+
 def init(db_path: str | None = None) -> None:
     global _conn, _db_path
     path = db_path or DB_PATH_DEFAULT

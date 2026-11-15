@@ -94,7 +94,7 @@ export default function App() {
           <div className="state-banner error" role="alert">
             <strong>Backend unavailable.</strong> Start it with
             <code className="mono"> .venv\Scripts\python -m backend.app.main </code>
-            from the project root, then refresh. ({backendError})
+            from the project root (or run <code className="mono">start.bat</code>), then refresh. ({backendError})
           </div>
         </div>
       )}

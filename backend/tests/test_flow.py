@@ -13,7 +13,6 @@ from backend.app.storage import db
 
 @pytest.fixture(scope="module")
 def client(bridge):
-    db.init("outputs/test_experiments.db")
     with TestClient(create_app()) as c:
         yield c
 

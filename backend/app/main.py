@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import asynccontextmanager
 
 import uvicorn
 
@@ -14,19 +15,24 @@ def create_app():
     from fastapi import FastAPI
     from fastapi.middleware.cors import CORSMiddleware
 
-    app = FastAPI(title="CircuitScope", version="0.1.0")
+    @asynccontextmanager
+    async def lifespan(_app):
+        # Respect a path chosen earlier (--db flag, tests); default otherwise.
+        if not db.is_initialized():
+            db.init()
+        yield
+
+    app = FastAPI(title="CircuitScope", version="0.1.0", lifespan=lifespan)
     # Local-first product: the dev frontend runs on a different localhost port.
+    # Vite moves to 5174+ when 5173 is busy, so accept any local port while
+    # still rejecting every non-local origin.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$",
         allow_methods=["*"],
         allow_headers=["*"],
     )
     app.include_router(router)
-
-    @app.on_event("startup")
-    def _startup() -> None:
-        db.init()
 
     return app
 

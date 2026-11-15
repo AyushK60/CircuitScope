@@ -42,6 +42,11 @@ class ModelAdapter:
             target = device or ("cuda" if torch.cuda.is_available() else "cpu")
             bridge = TransformerBridge.boot_transformers(MODEL_ID, device=target)
             bridge.eval()
+            # set_grad_enabled is thread-local; request/job threads would still
+            # build autograd graphs. Freezing parameters makes inference grad-free
+            # on every thread.
+            for p in bridge.parameters():
+                p.requires_grad_(False)
             torch.set_grad_enabled(False)
             self._bridge = bridge
             self._device = str(next(bridge.parameters()).device)
