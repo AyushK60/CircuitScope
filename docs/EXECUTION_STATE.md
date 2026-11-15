@@ -84,8 +84,9 @@ cd frontend && npx playwright test                       :: E2E (needs both serv
    Backend auto-selects `cuda` when available.
 2. `blocks.N.attn.hook_result` exists in hook_dict but is NOT captured by
    `run_with_cache` in TransformerLens 4.3.0 — excluded from the allowlist.
-3. Experiment history in the UI shows current-session jobs; SQLite persists
-   results but there is no history browse screen yet (API + export exist).
+3. ~~Experiment history browse UI~~ — resolved in the HORIZON release: the
+   Playground history panel lists persisted experiments, with reopen,
+   delete-with-confirmation, and two-experiment comparison.
 4. Flow playback stage pacing is fixed (1.6 s/stage) — deliberately not
    presented as measured latency; only elapsed_seconds is a real measurement.
 5. No PNG chart export (JSON + CSV only).
@@ -93,8 +94,12 @@ cd frontend && npx playwright test                       :: E2E (needs both serv
 
 ## Next steps if resuming
 
-- History browse UI + rename/delete with confirmation.
+Remaining (optional or not yet done). History browse, rename/delete and the
+history comparison are complete; they are no longer listed here.
+
 - Residual-stream/MLP activation magnitude views beyond norms (e.g., top
   contributing dimensions) via /api/inspect.
-- CUDA torch install + GPU verification run.
+- CUDA torch install + GPU verification run (M7 gate: GPU/OOM fallback not tested).
+- Fresh clean-checkout install and startup on Windows (M7 gate; not separately verified).
 - Optional: zero-ablation intervention type (backend design ready via heads/positions extension).
+- Optional P2 items from README section 9 (another small model, more intervention types, PNG export).

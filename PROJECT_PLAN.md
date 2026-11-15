@@ -8,14 +8,18 @@ recorded in `docs/DECISIONS.md`.
 
 | ID | Milestone | Gate | Status |
 | --- | --- | --- | --- |
-| M0 | Environment audit + repo foundation | Reproducible env, pinned deps, startup docs | in progress |
-| M1 | Real local GPT-2 execution | Authentic prediction + one real activation, CLI smoke test | pending |
-| M2 | Verified activation intervention | Patch matches independent reference; no-op control passes | pending |
-| M3 | Backend API + persistence | Full experiment operable via documented HTTP API | pending |
-| M4 | Product shell + Discover landing | Nontechnical visitor can start a real experiment | pending |
-| M5 | Neural Network Explorer | Visual topology reconciles with real model metadata | pending |
-| M6 | Intervention Playground + Compare | End-to-end journey preset → patch → export | pending |
-| M7 | Quality, tests, handoff | pytest + Vitest + Playwright pass; honest limitations | pending |
+| M0 | Environment audit + repo foundation | Reproducible env, pinned deps, startup docs | done |
+| M1 | Real local GPT-2 execution | Authentic prediction + one real activation, CLI smoke test | done |
+| M2 | Verified activation intervention | Patch matches independent reference; no-op control passes | done |
+| M3 | Backend API + persistence | Full experiment operable via documented HTTP API | done |
+| M4 | Product shell + Discover landing | Nontechnical visitor can start a real experiment | done |
+| M5 | Neural Network Explorer | Visual topology reconciles with real model metadata | done |
+| M6 | Intervention Playground + Compare | End-to-end journey preset → patch → export | done |
+| M7 | Quality, tests, handoff | pytest + Vitest + Playwright pass; honest limitations | done, with open gaps (GPU inference not run; clean-checkout install on Windows not separately verified) |
+
+Current status (final release audit, 2026-10-30): all 22 acceptance items PASS.
+See `docs/CIRCUITSCOPE_FINAL_RELEASE_AUDIT.md`. Remaining work is limited to the
+documented limitations in `docs/EXECUTION_STATE.md`.
 
 ## Vertical-slice order (build priority)
 
