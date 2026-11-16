@@ -20,6 +20,7 @@ from ..config import (
 )
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER
+from ..provenance import collect as collect_provenance
 from ..storage import db
 from .metrics import compare_metrics
 
@@ -134,6 +135,7 @@ def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) ->
             "device": ADAPTER._device,
             "torch": torch.__version__,
             "elapsed_seconds": round(elapsed, 4),
+            **collect_provenance(),
         },
         "tokens_clean": bridge.to_str_tokens(norm["clean_text"]),
         "tokens_corrupted": bridge.to_str_tokens(norm["corrupted_text"]),
