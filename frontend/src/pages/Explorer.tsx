@@ -24,8 +24,8 @@ export default function Explorer({ health }: { health: Health | null }) {
   );
   const [level, setLevel] = useState<Level>("model");
   const urlParams = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? ""), []);
-  const initialHook = useMemo(() => urlParams.get("hook"), []);
-  const initialText = useMemo(() => urlParams.get("text") ?? EXAMPLE, []);
+  const initialHook = useMemo(() => urlParams.get("hook"), [urlParams]);
+  const initialText = useMemo(() => urlParams.get("text") ?? EXAMPLE, [urlParams]);
   const [layer, setLayer] = useState<number>(() => {
     const m = initialHook?.match(/blocks\.(\d+)\./);
     return m ? Math.min(11, Math.max(0, Number(m[1]))) : 5;

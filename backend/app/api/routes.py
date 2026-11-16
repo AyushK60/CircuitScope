@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -19,8 +20,14 @@ from ..experiments.jobs import RUNNER, ExperimentValidationError
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER, ModelNotLoadedError
 from ..storage import db
+from ..tasks import registry as task_registry
+from ..tasks.registry import TASK_ID_PATTERN
 
 router = APIRouter(prefix="/api")
+
+# Task definition files are read once at startup. Reading JSON here can never
+# trigger a model load; malformed files are recorded, never raised.
+task_registry.load_all()
 
 
 class PredictRequest(BaseModel):
@@ -197,6 +204,9 @@ def experiment_status(job_id: str) -> dict:
         "config": job.config,
         "results": job.results,
         "error": job.error,
+        "type": job.type,
+        "progress": job.progress,
+        "progress_message": job.progress_message,
     }
 
 
@@ -255,3 +265,23 @@ def export_experiment(job_id: str, fmt: str = "json") -> Any:
 @router.get("/hooks")
 def hooks() -> dict:
     return {"patchable": sorted(PATCHABLE_HOOKS), "capturable": sorted(CAPTURABLE_HOOKS)}
+
+
+@router.get("/tasks")
+def tasks_index() -> dict:
+    return {
+        "tasks": task_registry.list_tasks(),
+        "load_errors": task_registry.get_load_errors(),
+    }
+
+
+@router.get("/tasks/{task_id}")
+def task_detail(task_id: str) -> dict:
+    # Reject malformed ids (e.g. path fragments) with 404, never 500. The
+    # pair-level validation needs the tokenizer, so it runs lazily here (cached).
+    if not re.fullmatch(TASK_ID_PATTERN, task_id):
+        raise HTTPException(status_code=404, detail="task not found")
+    task = task_registry.get_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return {**task.model_dump(), "validation": task_registry.validate_task(task)}

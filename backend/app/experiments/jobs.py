@@ -1,5 +1,10 @@
 """Experiment execution: validation, the clean/corrupted/patched pipeline,
 and a bounded serial worker (one heavy experiment at a time).
+
+Job types are registered in JOB_TYPES (name -> validate/run). The original
+pipeline is registered as type "intervention"; ctx.report()/ctx.check_cancel()
+give run functions progress reporting and cooperative cancellation without
+string-matching exception messages.
 """
 
 from __future__ import annotations
@@ -8,6 +13,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from typing import Callable
 
 import torch
 
@@ -29,6 +35,11 @@ class ExperimentValidationError(ValueError):
     pass
 
 
+class JobCancelled(Exception):
+    """Raised via ctx.check_cancel() when the job's cancel flag is set.
+    Deliberately NOT a subclass of ExperimentValidationError."""
+
+
 @dataclass
 class JobRecord:
     job_id: str
@@ -38,6 +49,9 @@ class JobRecord:
     error: str | None = None
     created_at: float = field(default_factory=time.time)
     finished_at: float | None = None
+    type: str = "intervention"
+    progress: float = 0.0
+    progress_message: str = ""
 
 
 def validate_experiment_config(cfg: dict) -> dict:
@@ -76,15 +90,29 @@ def validate_experiment_config(cfg: dict) -> dict:
     }
 
 
-def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) -> dict:
-    """Run clean -> corrupted -> patched with the real model; return full results."""
+def execute_experiment(
+    cfg: dict,
+    cancel_flag: threading.Event | None = None,
+    progress: Callable[[float, str], None] | None = None,
+) -> dict:
+    """Run clean -> corrupted -> patched with the real model; return full results.
+
+    ``progress(value, message)`` is called at fixed milestones (0.05 after
+    validation, 0.2 after the clean run, 0.5 after the corrupted run, 0.9 after
+    the patched run); the runner reports 1.0 when the job completes. The return
+    value is unchanged.
+    """
     norm = validate_experiment_config(cfg)
     bridge = ADAPTER.ensure_loaded()
     tok = bridge.tokenizer
 
     def check_cancel():
         if cancel_flag is not None and cancel_flag.is_set():
-            raise ExperimentValidationError("cancelled")
+            raise JobCancelled("cancelled")
+
+    def report(value: float, message: str) -> None:
+        if progress is not None:
+            progress(value, message)
 
     check_cancel()
     # Candidate validity: both must be single tokens with leading spaces intact.
@@ -107,6 +135,7 @@ def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) ->
     if any(p >= seq for p in norm["positions"]):
         raise ExperimentValidationError(f"position out of range for sequence length {seq}")
 
+    report(0.05, "validated — starting clean run")
     t0 = time.perf_counter()
     check_cancel()
     logits_clean, clean_cache = bridge.run_with_cache(
@@ -114,8 +143,10 @@ def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) ->
     )
     if norm["hook"] not in clean_cache:
         raise ExperimentValidationError("requested hook was not captured during clean run")
+    report(0.2, "clean run complete")
     check_cancel()
     logits_corr = bridge(toks_corr)
+    report(0.5, "corrupted run complete")
     check_cancel()
     patched = engine.run_patched(
         toks_corr,
@@ -124,6 +155,7 @@ def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) ->
         norm["positions"],
         norm["heads"],
     )
+    report(0.9, "patched run complete")
     elapsed = time.perf_counter() - t0
 
     metrics = compare_metrics(logits_clean, logits_corr, patched["logits"], tid_a, tid_b)
@@ -154,6 +186,48 @@ def execute_experiment(cfg: dict, cancel_flag: threading.Event | None = None) ->
     }
 
 
+class JobContext:
+    """Passed to job-type run functions: clamped monotonic progress reporting
+    and cooperative cancellation."""
+
+    def __init__(self, runner: "ExperimentRunner", job: JobRecord, cancel_flag: threading.Event | None) -> None:
+        self._runner = runner
+        self._job = job
+        self.cancel_flag = cancel_flag  # read by run fns that forward it downstream
+
+    def report(self, progress: float, message: str) -> None:
+        """Clamp to [0, 1]; never let the stored progress decrease."""
+        try:
+            p = max(0.0, min(1.0, float(progress)))
+        except (TypeError, ValueError):
+            p = 0.0
+        with self._runner._lock:
+            if p < self._job.progress:
+                p = self._job.progress
+            self._job.progress = p
+            self._job.progress_message = str(message)
+
+    def check_cancel(self) -> None:
+        if self.cancel_flag is not None and self.cancel_flag.is_set():
+            raise JobCancelled("cancelled")
+
+
+# Job-type registry: name -> {"validate": fn(cfg), "run": fn(config, ctx)}.
+JOB_TYPES: dict[str, dict] = {}
+
+
+def register_job_type(name: str, validate_fn: Callable, run_fn: Callable) -> None:
+    JOB_TYPES[name] = {"validate": validate_fn, "run": run_fn}
+
+
+def _run_intervention(cfg: dict, ctx: JobContext) -> dict:
+    return execute_experiment(cfg, cancel_flag=ctx.cancel_flag, progress=ctx.report)
+
+
+# The original clean/corrupted/patched pipeline, registered as a job type.
+register_job_type("intervention", validate_experiment_config, _run_intervention)
+
+
 class ExperimentRunner:
     """Bounded serial worker: one heavy experiment at a time."""
 
@@ -163,13 +237,16 @@ class ExperimentRunner:
         self._thread: threading.Thread | None = None
         self._cancel_flags: dict[str, threading.Event] = {}
 
-    def submit(self, cfg: dict) -> JobRecord:
-        norm = validate_experiment_config(cfg)  # fail fast on invalid specs
+    def submit(self, cfg: dict, job_type: str = "intervention") -> JobRecord:
+        spec = JOB_TYPES.get(job_type)
+        if spec is None:
+            raise ExperimentValidationError(f"unknown job type: {job_type!r}")
+        norm = spec["validate"](cfg)  # fail fast on invalid specs
         with self._lock:
             running = any(j.status in ("queued", "running") for j in self._jobs.values())
             if running:
                 raise ExperimentValidationError("an experiment is already running; wait for it to finish")
-            job = JobRecord(job_id=uuid.uuid4().hex[:12], config=norm)
+            job = JobRecord(job_id=uuid.uuid4().hex[:12], config=norm, type=job_type)
             self._jobs[job.job_id] = job
             self._cancel_flags[job.job_id] = threading.Event()
         self._thread = threading.Thread(target=self._run, args=(job.job_id,), daemon=True)
@@ -181,20 +258,31 @@ class ExperimentRunner:
             job = self._jobs[job_id]
             flag = self._cancel_flags[job_id]
             job.status = "running"
+        spec = JOB_TYPES.get(job.type)
+        ctx = JobContext(self, job, flag)
         try:
-            results = execute_experiment(job.config, cancel_flag=flag)
-            with self._lock:
-                job.results = results
-                job.status = "complete"
-                job.finished_at = time.time()
+            results = spec["run"](job.config, ctx)
+            ctx.report(1.0, "complete")
+            # Persist BEFORE marking complete, so "complete" always implies the
+            # record is retrievable from history. If persistence fails, the job
+            # is still marked complete (with the stderr warning kept).
             try:
                 db.save_experiment(job.config, results, "complete", exp_id=job_id)
             except Exception as e:
                 import sys
                 print(f"PERSIST WARNING: experiment results not saved: {type(e).__name__}: {e}", file=sys.stderr)
+            with self._lock:
+                job.results = results
+                job.status = "complete"
+                job.finished_at = time.time()
+        except JobCancelled:
+            with self._lock:
+                job.status = "cancelled"
+                job.error = "cancelled"
+                job.finished_at = time.time()
         except ExperimentValidationError as e:
             with self._lock:
-                job.status = "cancelled" if "cancelled" in str(e) else "failed"
+                job.status = "failed"
                 job.error = str(e)
                 job.finished_at = time.time()
         except Exception as e:  # surface real failures honestly

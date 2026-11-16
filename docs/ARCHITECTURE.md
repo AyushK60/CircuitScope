@@ -3,13 +3,28 @@
 ```
 Browser (React 19 + TS, Vite, port 5173)
   Landing / Model Explorer / Playground / Learn
+  pages/playground/    → split panels (presets, url, TargetStrip, MetricCard,
+                         GuidedWizard, ExperimentForm, ResultsPanel,
+                         ContinuationPanel, QuestionPanel, HistoryPanel,
+                         useIoiPreset hook); Playground.tsx composes them
+  components/architecture/ → canvas levels (ModelLevel, BlockLevel,
+                         AttentionLevel, shared parts, layout constants);
+                         ArchitectureCanvas.tsx composes them
         │  fetch (typed client: frontend/src/api/client.ts)
         ▼
 FastAPI (127.0.0.1:8000)  backend/app/
   api/routes.py        → /api/health, /models, /predict, /inspect,
-                         /experiments (+status/cancel/list/export), /hooks
+                         /experiments (+status/cancel/list/export), /hooks,
+                         /api/tasks (+ per-task validation)
   schemas (pydantic)   → input bounds: 512 chars, top_k ≤ 20, layer ≤ 11
-  experiments/jobs.py  → validate → serial worker thread → JobRecord lifecycle
+  tasks/registry.py    → task definition files (examples/tasks/*.json);
+                         malformed files recorded, never fatal; per-pair
+                         validation against the real tokenizer runs lazily
+                         on request and is cached
+  experiments/jobs.py  → job-type registry (JOB_TYPES: validate/run fns) →
+                         serial worker thread → JobRecord lifecycle with
+                         type/progress/progress_message; JobCancelled is
+                         distinct from ExperimentValidationError
   experiments/metrics.py → D, Delta, Recovery (unclamped, guarded)
   model_runtime/loader.py → thread-safe TransformerBridge singleton
   model_runtime/engine.py → predict / capture / attention_pattern / run_patched
@@ -19,6 +34,28 @@ FastAPI (127.0.0.1:8000)  backend/app/
 PyTorch 2.15.0+cpu · TransformerLens 4.3.0 TransformerBridge · GPT-2 Small (124M)
   hook points: 637 registered; verified-capturable subset allowlisted in config.py
 ```
+
+## Task registry (v2, Stage 1)
+
+Each task (e.g. IOI) is a data file in `examples/tasks/*.json` — prompts,
+candidate tokens, positions of interest, recommended hooks, source citation.
+Adding a task needs no code change. `GET /api/tasks` lists them (with any
+load errors); `GET /api/tasks/{id}` returns the task plus validation performed
+against the real tokenizer (single-token candidates, token alignment, position
+ranges, hook allowlist). The Playground loads the IOI default pair at mount
+and falls back to its hardcoded preset if the registry is unavailable.
+
+## Job engine (v2, Stage 1)
+
+`ExperimentRunner.submit(cfg, job_type="intervention")` remains the one heavy
+job at a time. Registered job types provide `validate_fn(cfg)` and
+`run_fn(config, ctx)`; `ctx.report(progress, message)` clamps to [0, 1] and
+never decreases, `ctx.check_cancel()` raises `JobCancelled` (distinct from
+`ExperimentValidationError`, which maps to "failed"). Results are persisted to
+SQLite **before** a job is marked complete, so "complete" always implies the
+record is retrievable. The intervention pipeline reports progress at fixed
+milestones (0.05 / 0.2 / 0.5 / 0.9 / 1.0); live job status JSON carries
+`type`, `progress`, `progress_message`.
 
 ## Intervention semantics (the core science)
 

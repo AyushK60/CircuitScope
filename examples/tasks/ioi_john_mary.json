@@ -1,0 +1,26 @@
+{
+  "id": "ioi_john_mary",
+  "name": "IOI: John and Mary",
+  "description": "Classic indirect-object-identification style example. The clean prompt ends with the model likely predicting ' Mary' (the recipient); the corrupted prompt swaps the second subject so the model likely repeats ' John'. The patch copies a clean-run activation at the second-subject position into the corrupted run.",
+  "source": {
+    "citation": "Wang et al. 2022, Interpretability in the Wild",
+    "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+  },
+  "expected_behavior": "The clean prompt should make ' Mary' more likely than ' John'. Presets are starting points; outcomes are measured, never assumed.",
+  "pairs": [
+    {
+      "id": "default",
+      "clean_text": "John and Mary went to the shop. John gave a book to",
+      "corrupted_text": "John and Mary went to the shop. Mary gave a book to",
+      "candidate_a": " Mary",
+      "candidate_b": " John",
+      "positions_of_interest": { "second_subject": 9, "final": 13 },
+      "recommended_hooks": [
+        { "hook": "blocks.5.hook_out", "positions": [9], "heads": null, "note": "residual stream after block 5 at the second subject; verified strong effect (recovery ~0.9)" },
+        { "hook": "blocks.6.hook_out", "positions": [9], "heads": null, "note": "residual stream after block 6 at the second subject" },
+        { "hook": "blocks.9.hook_out", "positions": [13], "heads": null, "note": "residual stream after block 9 at the final position" },
+        { "hook": "blocks.5.attn.hook_z", "positions": [9], "heads": null, "note": "per-head z-values at the second subject" }
+      ]
+    }
+  ]
+}

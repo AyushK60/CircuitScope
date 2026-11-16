@@ -175,6 +175,50 @@ export interface ExperimentRecord {
   error: string | null;
 }
 
+export interface TaskRecommendedHook {
+  hook: string;
+  positions: number[];
+  heads: number[] | null;
+  note?: string;
+}
+
+export interface TaskPair {
+  id: string;
+  clean_text: string;
+  corrupted_text: string;
+  candidate_a: string;
+  candidate_b: string;
+  positions_of_interest: Record<string, number>;
+  recommended_hooks: TaskRecommendedHook[];
+}
+
+export interface TaskPairValidation {
+  id: string;
+  ok: boolean;
+  errors: string[];
+  n_tokens_clean: number;
+  n_tokens_corrupted: number;
+  candidate_a_id: number | null;
+  candidate_b_id: number | null;
+}
+
+export interface Task {
+  id: string;
+  name: string;
+  description: string;
+  source: { citation: string; url: string };
+  expected_behavior: string;
+  pairs: TaskPair[];
+  validation?: { ok: boolean; errors: string[]; pairs: TaskPairValidation[] };
+}
+
+export interface TaskSummary {
+  id: string;
+  name: string;
+  description: string;
+  n_pairs: number;
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -256,4 +300,7 @@ export const api = {
     }),
   exportUrl: (id: string, fmt: "json" | "csv") => `${API_BASE}/api/experiments/${id}/export?fmt=${fmt}`,
   hooks: () => call<{ patchable: string[]; capturable: string[] }>("/api/hooks"),
+  tasks: () =>
+    call<{ tasks: TaskSummary[]; load_errors: { file: string; error: string }[] }>("/api/tasks"),
+  task: (id: string) => call<Task>(`/api/tasks/${id}`),
 };
