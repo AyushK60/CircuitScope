@@ -9,7 +9,6 @@ collect() after the model is already loaded.
 
 from __future__ import annotations
 
-import functools
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -103,8 +102,19 @@ def _git_commit() -> str:
         return "unknown"
 
 
-@functools.lru_cache(maxsize=1)
+_STATIC_CACHE: dict | None = None
+
+
 def _static() -> dict:
+    """Static provenance, cached only once the model is loaded.
+
+    Caching before load would freeze the placeholder device/dtype defaults for
+    the whole process (wrong on a CUDA machine), so an unloaded call is never
+    cached.
+    """
+    global _STATIC_CACHE
+    if _STATIC_CACHE is not None:
+        return _STATIC_CACHE
     device = "cpu"
     dtype = "float32"
     try:
@@ -115,7 +125,7 @@ def _static() -> dict:
             dtype = str(param.dtype)
     except Exception:
         pass
-    return {
+    static = {
         "model_id": MODEL_ID,
         "model_revision": _model_revision(),
         "device": device,
@@ -128,6 +138,14 @@ def _static() -> dict:
         },
         "git_commit": _git_commit(),
     }
+    if ADAPTER.is_loaded:
+        _STATIC_CACHE = static
+    return static
+
+
+def _clear_static_cache() -> None:
+    global _STATIC_CACHE
+    _STATIC_CACHE = None
 
 
 def collect() -> dict:
