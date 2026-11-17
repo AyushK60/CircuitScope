@@ -11,6 +11,9 @@ export default defineConfig({
   },
   expect: { timeout: 30_000 },
   reporter: [["list"]],
+  // All e2e tests share one backend whose job engine runs ONE heavy job at a
+  // time; parallel test files would 422 each other's submissions.
+  workers: 1,
   webServer: [
     {
       command: ".venv\\Scripts\\python -m backend.app.main",

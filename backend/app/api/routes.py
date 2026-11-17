@@ -8,6 +8,8 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from ..analysis.dla import compute_dla
+from ..analysis.lens import compute_logit_lens
 from ..config import (
     CAPTURABLE_HOOKS,
     MAX_LAYERS,
@@ -16,9 +18,11 @@ from ..config import (
     PATCHABLE_HOOKS,
     validate_hook_name,
 )
+from ..experiments import sweeps  # noqa: F401  (registers the "sweep" job type)
 from ..experiments.jobs import RUNNER, ExperimentValidationError
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER, ModelNotLoadedError
+from ..provenance import collect as provenance_collect
 from ..storage import db
 from ..tasks import registry as task_registry
 from ..tasks.registry import TASK_ID_PATTERN
@@ -265,6 +269,89 @@ def export_experiment(job_id: str, fmt: str = "json") -> Any:
 @router.get("/hooks")
 def hooks() -> dict:
     return {"patchable": sorted(PATCHABLE_HOOKS), "capturable": sorted(CAPTURABLE_HOOKS)}
+
+
+class SweepRequest(BaseModel):
+    task_id: str
+    pair_id: str | None = None
+    mode: str
+
+
+class DlaRequest(BaseModel):
+    task_id: str
+    pair_id: str | None = None
+    run: str = Field(default="clean", pattern="^(clean|corrupted)$")
+
+
+class LogitLensRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=MAX_PROMPT_CHARS)
+    candidate_a: str | None = Field(default=None, max_length=32)
+    candidate_b: str | None = Field(default=None, max_length=32)
+    top_k: int = Field(default=5, ge=1, le=10)
+
+
+def _task_for_analysis(task_id: str, pair_id: str | None):
+    """Resolve a task pair for the analysis endpoints: 404 for unknown
+    task/pair, 422 when the pair fails registry validation."""
+    if not re.fullmatch(TASK_ID_PATTERN, task_id):
+        raise HTTPException(status_code=404, detail="task not found")
+    task = task_registry.get_task(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    pair = task.pairs[0] if pair_id is None else next((p for p in task.pairs if p.id == pair_id), None)
+    if pair is None:
+        raise HTTPException(status_code=404, detail=f"pair not found for task {task_id}")
+    validation = task_registry.validate_task(task)
+    pair_validation = next((p for p in validation.get("pairs", []) if p["id"] == pair.id), None)
+    if pair_validation is None or not pair_validation.get("ok"):
+        detail = "; ".join((pair_validation or {}).get("errors", []) or validation.get("errors", []))
+        raise HTTPException(status_code=422, detail=f"task pair failed validation: {detail}")
+    return pair
+
+
+@router.post("/analysis/dla")
+def analysis_dla(req: DlaRequest) -> dict:
+    """Direct logit attribution for one task pair's clean or corrupted prompt."""
+    task = _task_for_analysis(req.task_id, req.pair_id)
+    try:
+        text = task.clean_text if req.run == "clean" else task.corrupted_text
+        result = compute_dla(text, task.candidate_a, task.candidate_b)
+    except ModelNotLoadedError:
+        raise HTTPException(status_code=503, detail="model not loaded yet")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {
+        "task_id": req.task_id,
+        "pair_id": task.id,
+        "run": req.run,
+        **result,
+        "provenance": provenance_collect(),
+    }
+
+
+@router.post("/analysis/logit_lens")
+def analysis_logit_lens(req: LogitLensRequest) -> dict:
+    """Logit lens over the stages of one free-text prompt."""
+    if (req.candidate_a is None) != (req.candidate_b is None):
+        raise HTTPException(status_code=422, detail="candidate_a and candidate_b must be provided together")
+    try:
+        result = compute_logit_lens(req.text, req.candidate_a, req.candidate_b, req.top_k)
+    except ModelNotLoadedError:
+        raise HTTPException(status_code=503, detail="model not loaded yet")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {**result, "provenance": provenance_collect()}
+
+
+@router.post("/sweeps")
+def create_sweep(req: SweepRequest) -> dict:
+    """Submit a patching sweep job (one heavy job at a time, shared with
+    experiments). Poll GET /api/experiments/{job_id} for status/results."""
+    try:
+        job = RUNNER.submit(req.model_dump(), job_type="sweep")
+    except ExperimentValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"job_id": job.job_id, "status": job.status}
 
 
 @router.get("/tasks")

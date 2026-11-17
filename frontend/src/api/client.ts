@@ -219,6 +219,106 @@ export interface TaskSummary {
   n_pairs: number;
 }
 
+// ---- Stage 2: sweeps, DLA, logit lens ----
+
+export interface DlaComponent {
+  name: string;
+  kind: "embed" | "pos_embed" | "head" | "attn_bias" | "mlp" | "ln_final_bias";
+  layer: number | null;
+  head: number | null;
+  value: number;
+}
+
+export interface DlaReconciliation {
+  sum_of_terms: number;
+  model_D: number;
+  abs_error: number;
+  tolerance: number;
+  ok: boolean;
+}
+
+export interface DlaResult {
+  task_id: string;
+  pair_id: string;
+  run: "clean" | "corrupted";
+  tokens: string[];
+  position: number;
+  candidate_a: string;
+  candidate_b: string;
+  D: number;
+  components: DlaComponent[];
+  reconciliation: DlaReconciliation;
+  notes: string[];
+  provenance: Record<string, unknown>;
+}
+
+export interface LensTopToken {
+  token: string;
+  token_id: number;
+  logit: number;
+  prob: number;
+}
+
+export interface LensStage {
+  stage: string;
+  layer: number | null;
+  D: number | null;
+  prob_a: number | null;
+  prob_b: number | null;
+  top: LensTopToken[];
+}
+
+export interface LensFinalMatches {
+  max_abs_logit_diff_candidates: number | null;
+  max_abs_logit_diff_full: number;
+  top1_agrees: boolean;
+  ok: boolean;
+  tolerance: number;
+}
+
+export interface LensResult {
+  tokens: string[];
+  position: number;
+  candidate_a: string | null;
+  candidate_b: string | null;
+  stages: LensStage[];
+  final_matches_model: LensFinalMatches;
+  note: string;
+  model_D: number | null;
+  provenance: Record<string, unknown>;
+}
+
+export interface SweepResult {
+  job_type: "sweep";
+  mode: "layer_position" | "layer_head";
+  task_id: string;
+  pair_id: string;
+  direction: string;
+  tokens_clean: string[];
+  tokens_corrupted: string[];
+  candidate_a: string;
+  candidate_b: string;
+  baselines: { D_clean: number; D_corrupted: number; denominator: number; warnings: string[] };
+  row_labels: string[];
+  col_labels: string[];
+  recovery: number[][];
+  d_patched: number[][];
+  n_runs: number;
+  elapsed_seconds: number;
+  provenance: Record<string, unknown>;
+}
+
+export interface SweepJobStatus {
+  id: string;
+  status: ExperimentStatus;
+  config?: unknown;
+  results: SweepResult | null;
+  error: string | null;
+  type: string;
+  progress: number;
+  progress_message: string;
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -303,4 +403,25 @@ export const api = {
   tasks: () =>
     call<{ tasks: TaskSummary[]; load_errors: { file: string; error: string }[] }>("/api/tasks"),
   task: (id: string) => call<Task>(`/api/tasks/${id}`),
+  startSweep: (spec: { task_id: string; pair_id?: string | null; mode: "layer_position" | "layer_head" }) =>
+    call<{ job_id: string; status: string }>("/api/sweeps", {
+      method: "POST",
+      body: JSON.stringify(spec),
+    }),
+  jobStatus: (id: string) =>
+    call<SweepJobStatus>(`/api/experiments/${id}`),
+  dla: (taskId: string, pairId: string | null, run: "clean" | "corrupted") =>
+    call<DlaResult>("/api/analysis/dla", {
+      method: "POST",
+      body: JSON.stringify({ task_id: taskId, pair_id: pairId, run }),
+    }),
+  logitLens: (text: string, candidateA?: string | null, candidateB?: string | null, topK = 5) =>
+    call<LensResult>("/api/analysis/logit_lens", {
+      method: "POST",
+      body: JSON.stringify({
+        text,
+        top_k: topK,
+        ...(candidateA && candidateB ? { candidate_a: candidateA, candidate_b: candidateB } : {}),
+      }),
+    }),
 };

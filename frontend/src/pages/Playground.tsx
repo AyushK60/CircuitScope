@@ -13,6 +13,7 @@ import ResultsPanel from "./playground/ResultsPanel";
 import { PRESET } from "./playground/presets";
 import { readParams } from "./playground/url";
 import { useIoiPreset } from "./playground/useIoiPreset";
+import { interventionsOnly } from "./playground/history";
 import type { RunState } from "./playground/types";
 
 export default function Playground({ health }: { health: Health | null }) {
@@ -78,7 +79,7 @@ export default function Playground({ health }: { health: Health | null }) {
           setRecord(r);
           if (r.status === "complete") {
             setRunState("complete");
-            api.listExperiments().then((lr) => setHistory(lr.saved.filter((x) => x.status === "complete").slice(0, 10))).catch(() => {});
+            api.listExperiments().then((lr) => setHistory(interventionsOnly(lr.saved).slice(0, 10))).catch(() => {});
           }
           if (r.status === "failed" || r.status === "cancelled") setRunState(r.status);
         })
@@ -124,7 +125,7 @@ export default function Playground({ health }: { health: Health | null }) {
   const refreshHistory = () => {
     api
       .listExperiments()
-      .then((r) => setHistory(r.saved.filter((x) => x.status === "complete").slice(0, 10)))
+      .then((r) => setHistory(interventionsOnly(r.saved).slice(0, 10)))
       .catch(() => {});
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps

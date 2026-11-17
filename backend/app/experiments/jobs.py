@@ -258,9 +258,14 @@ class ExperimentRunner:
             job = self._jobs[job_id]
             flag = self._cancel_flags[job_id]
             job.status = "running"
-        spec = JOB_TYPES.get(job.type)
         ctx = JobContext(self, job, flag)
         try:
+            # Lookup inside the try: an unknown job type must fail the job
+            # (and release the worker), never kill the thread and leave the
+            # job stuck in "running" forever.
+            spec = JOB_TYPES.get(job.type)
+            if spec is None:
+                raise ExperimentValidationError(f"unknown job type: {job.type!r}")
             results = spec["run"](job.config, ctx)
             ctx.report(1.0, "complete")
             # Persist BEFORE marking complete, so "complete" always implies the

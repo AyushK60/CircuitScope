@@ -149,3 +149,18 @@ def test_complete_implies_persisted(bridge, ioi):
 def test_test_job_type_not_in_production_registry(sleep_test_type):
     assert "sleep_test" in JOB_TYPES  # registered inside the fixture
     assert "intervention" in JOB_TYPES
+
+
+def test_unknown_type_in_run_fails_job_and_releases_worker():
+    """A job whose type disappeared from the registry must end 'failed' with a
+    clear error — not stay 'running' forever (which would block all future
+    jobs). Exercises _run directly so the lookup path is deterministic."""
+    runner = ExperimentRunner()
+    job = JobRecord(job_id="ghost", config={}, type="vanishing_type")
+    runner._jobs[job.job_id] = job
+    runner._cancel_flags[job.job_id] = threading.Event()
+    runner._run(job.job_id)  # direct call: no thread, no race
+    assert job.status == "failed", job.error
+    assert "unknown job type" in (job.error or "")
+    # the serial-worker rule is not blocked by the dead job
+    assert not any(j.status in ("queued", "running") for j in runner._jobs.values())

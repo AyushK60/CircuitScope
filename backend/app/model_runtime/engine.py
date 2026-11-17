@@ -313,19 +313,18 @@ def attention_pattern(text: str, layer: int) -> dict:
     }
 
 
-def run_patched(
+def patched_logits(
     corrupted_text: str,
     clean_cache: dict,
     hook_name: str,
     positions: list[int],
     heads: list[int] | None = None,
-) -> dict:
-    """Run the corrupted prompt with the clean activation spliced in.
-
-    Supports tensors shaped [1, seq, d] (patch [0, pos, :]) and
-    [1, seq, n_heads, d_head] (patch [0, pos, head, :] per selected head,
-    all heads when ``heads`` is None).
-    """
+) -> torch.Tensor:
+    """Run the corrupted prompt with the clean activation spliced in; return
+    the raw final logits without a per-run top-k decode. This shares the
+    validation and hook logic with ``run_patched`` (whose outputs are
+    unchanged); callers that only need logits (e.g. patching sweeps over many
+    cells) skip the decode cost."""
     if not validate_hook_name(hook_name, patchable=True):
         raise InterventionError(f"hook not patchable/supported: {hook_name!r}")
     if hook_name not in clean_cache:
@@ -355,8 +354,24 @@ def run_patched(
                 z[0, p, :] = src[0, p, :]
         return z
 
+    return bridge.run_with_hooks(corrupted_text, fwd_hooks=[(hook_name, hook_fn)])
+
+
+def run_patched(
+    corrupted_text: str,
+    clean_cache: dict,
+    hook_name: str,
+    positions: list[int],
+    heads: list[int] | None = None,
+) -> dict:
+    """Run the corrupted prompt with the clean activation spliced in.
+
+    Supports tensors shaped [1, seq, d] (patch [0, pos, :]) and
+    [1, seq, n_heads, d_head] (patch [0, pos, head, :] per selected head,
+    all heads when ``heads`` is None).
+    """
     t0 = time.perf_counter()
-    logits = bridge.run_with_hooks(corrupted_text, fwd_hooks=[(hook_name, hook_fn)])
+    logits = patched_logits(corrupted_text, clean_cache, hook_name, positions, heads)
     elapsed = time.perf_counter() - t0
     return {
         "logits": logits,
