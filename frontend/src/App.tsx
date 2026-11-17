@@ -6,12 +6,13 @@ import Playground from "./pages/Playground";
 import Learn from "./pages/Learn";
 import NeuralLab from "./pages/NeuralLab";
 import Sweeps from "./pages/Sweeps";
+import Study from "./pages/Study";
 
-type Route = "landing" | "explorer" | "playground" | "learn" | "lab" | "sweeps";
+type Route = "landing" | "explorer" | "playground" | "learn" | "lab" | "sweeps" | "study";
 
 function currentRoute(): Route {
   const h = window.location.hash.replace("#/", "").split("?")[0];
-  return (["explorer", "playground", "learn", "lab", "sweeps"].includes(h) ? h : "landing") as Route;
+  return (["explorer", "playground", "learn", "lab", "sweeps", "study"].includes(h) ? h : "landing") as Route;
 }
 
 export default function App() {
@@ -67,7 +68,7 @@ export default function App() {
           <span className="scope">⊙</span> CircuitScope
         </a>
         <nav className="nav" aria-label="Main">
-          {(["explorer", "lab", "playground", "learn", "sweeps"] as Route[]).map((r) => (
+          {(["explorer", "lab", "playground", "learn", "sweeps", "study"] as Route[]).map((r) => (
             <a
               key={r}
               href={`#/${r}`}
@@ -77,7 +78,7 @@ export default function App() {
                 navigate(r);
               }}
             >
-              {r === "explorer" ? "Model Explorer" : r === "playground" ? "Intervention Playground" : r === "lab" ? "NN Lab" : r === "sweeps" ? "Sweeps" : "Learn"}
+              {r === "explorer" ? "Model Explorer" : r === "playground" ? "Intervention Playground" : r === "lab" ? "NN Lab" : r === "sweeps" ? "Sweeps" : r === "study" ? "Study" : "Learn"}
             </a>
           ))}
         </nav>
@@ -106,6 +107,7 @@ export default function App() {
       {route === "learn" && <Learn />}
       {route === "lab" && <NeuralLab />}
       {route === "sweeps" && <Sweeps health={health} />}
+      {route === "study" && <Study health={health} />}
 
       <footer className="site-footer">
         CircuitScope — a local-first neural network observatory. GPT-2 Small runs entirely on this machine;

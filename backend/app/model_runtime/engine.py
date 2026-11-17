@@ -357,6 +357,95 @@ def patched_logits(
     return bridge.run_with_hooks(corrupted_text, fwd_hooks=[(hook_name, hook_fn)])
 
 
+def ablated_logits(
+    text: str,
+    hook_name: str,
+    positions: list[int],
+    heads: list[int] | None,
+    replacement: torch.Tensor,
+) -> torch.Tensor:
+    """Run ``text`` with the component's activation replaced by ``replacement``
+    (ablation on the CLEAN run, necessity-style evidence).
+
+    ``replacement`` must have the same shape as the hook tensor
+    (blocks.{L}.attn.hook_z: [1, seq, 12, 64]; blocks.{L}.mlp.hook_out:
+    [1, seq, 768]). The slices at ``positions`` (and ``heads`` for hook_z) are
+    replaced by the replacement's values; everything else passes through.
+    This shares no code path with ``patched_logits``/``run_patched`` (whose
+    behaviour is unchanged).
+    """
+    if not validate_hook_name(hook_name, patchable=True):
+        raise InterventionError(f"hook not patchable/supported: {hook_name!r}")
+    bridge = ADAPTER.bridge()
+    toks = bridge.to_tokens(text) if isinstance(text, str) else text
+    rep = replacement
+    n_seq = rep.shape[1]
+    for p in positions:
+        if not 0 <= p < n_seq:
+            raise InterventionError(f"position {p} out of range for {hook_name} (seq={n_seq})")
+    if rep.dim() == 4:
+        n_heads = rep.shape[2]
+        sel = heads if heads is not None else list(range(n_heads))
+        for hd in sel:
+            if not 0 <= hd < n_heads:
+                raise InterventionError(f"head {hd} out of range (n_heads={n_heads})")
+
+    def hook_fn(z: torch.Tensor, hook) -> torch.Tensor:  # noqa: ANN001
+        for p in positions:
+            if z.dim() == 4:
+                for hd in (heads if heads is not None else range(z.shape[2])):
+                    z[0, p, hd, :] = rep[0, p, hd, :]
+            else:
+                z[0, p, :] = rep[0, p, :]
+        return z
+
+    return bridge.run_with_hooks(toks, fwd_hooks=[(hook_name, hook_fn)])
+
+
+def interpolated_patch_logits(
+    corrupted_text: str,
+    clean_cache: dict,
+    hook_name: str,
+    positions: list[int],
+    heads: list[int] | None,
+    alpha: float,
+) -> torch.Tensor:
+    """Set the component's activation to ``a_corr + alpha*(a_clean - a_corr)``
+    (alpha=0 -> corrupted unchanged, alpha=1 -> exact clean patch) and return
+    the logits. Used by the AtP linearity gate (Task 3): the central difference
+    of D around alpha=0 is the per-unit-of-full-patch patching gradient.
+
+    The corrupted run's own activation is captured here in a separate pass.
+    """
+    if not validate_hook_name(hook_name, patchable=True):
+        raise InterventionError(f"hook not patchable/supported: {hook_name!r}")
+    if hook_name not in clean_cache:
+        raise InterventionError("clean cache does not contain the requested hook")
+    bridge = ADAPTER.bridge()
+    toks = bridge.to_tokens(corrupted_text) if isinstance(corrupted_text, str) else corrupted_text
+    src = clean_cache[hook_name].clone()  # never mutate the stored baseline
+    # Capture the corrupted run's activation for this hook (one extra pass).
+    _, corr_cache = bridge.run_with_cache(toks, names_filter=lambda n: n == hook_name)
+    if hook_name not in corr_cache:
+        raise InterventionError("corrupted run did not produce the requested hook activation")
+    a_corr = corr_cache[hook_name]
+    n_seq = src.shape[1]
+    for p in positions:
+        if not 0 <= p < n_seq:
+            raise InterventionError(f"position {p} out of range for {hook_name} (seq={n_seq})")
+
+    def hook_fn(z: torch.Tensor, hook) -> torch.Tensor:  # noqa: ANN001
+        for p in positions:
+            if z.dim() == 4:
+                for hd in (heads if heads is not None else range(z.shape[2])):
+                    z[0, p, hd, :] = a_corr[0, p, hd, :] + alpha * (src[0, p, hd, :] - a_corr[0, p, hd, :])
+            else:
+                z[0, p, :] = a_corr[0, p, :] + alpha * (src[0, p, :] - a_corr[0, p, :])
+        return z
+
+    return bridge.run_with_hooks(toks, fwd_hooks=[(hook_name, hook_fn)])
+
+
 def run_patched(
     corrupted_text: str,
     clean_cache: dict,

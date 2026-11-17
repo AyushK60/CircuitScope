@@ -2,12 +2,16 @@
 
 ```
 Browser (React 19 + TS, Vite, port 5173)
-  Landing / Model Explorer / Playground / Learn / Sweeps
+  Landing / Model Explorer / Playground / Learn / Sweeps / Study
   pages/playground/    → split panels (presets, url, TargetStrip, MetricCard,
                          GuidedWizard, ExperimentForm, ResultsPanel,
                          ContinuationPanel, QuestionPanel, HistoryPanel,
                          useIoiPreset hook); Playground.tsx composes them
   pages/Sweeps.tsx     → Stage 2 page: patching sweep, DLA, logit lens
+  pages/Study.tsx      → Stage 3 page: prompt-set study (RQ1/RQ2 tables,
+                         top-heads with known-group badges, overlap matrices,
+                         caveats); pages/study/ holds Rq1Table, OverlapMatrix,
+                         TopHeads (+ heads.ts helpers)
   components/SweepHeatmap.tsx → diverging Recovery heatmap + numbers table
   components/architecture/ → canvas levels (ModelLevel, BlockLevel,
                          AttentionLevel, shared parts, layout constants);
@@ -19,6 +23,7 @@ FastAPI (127.0.0.1:8000)  backend/app/
                          /experiments (+status/cancel/list/export), /hooks,
                          /api/tasks (+ per-task validation),
                          /api/sweeps (Stage 2 job type "sweep"),
+                         /api/study (Stage 3 job type "study"),
                          /api/analysis/dla, /api/analysis/logit_lens (Stage 2)
   schemas (pydantic)   → input bounds: 512 chars, top_k ≤ 20, layer ≤ 11
   tasks/registry.py    → task definition files (examples/tasks/*.json);
@@ -31,14 +36,35 @@ FastAPI (127.0.0.1:8000)  backend/app/
                          distinct from ExperimentValidationError
   experiments/sweeps.py → Stage 2 "sweep" job type (layer_position,
                          layer_head); one clean cache reused for every cell
+  experiments/study.py → Stage 3 "study" job type: prompt set → per-prompt
+                         clean cache, 3 corrupted baselines, exact denoising
+                         (3 corruptions × 2 metrics × 156 components), AtP
+                         (swap/D), DLA (clean run), zero/mean ablation
+                         (two-pass, leave-one-out template-family means);
+                         pre-registered statistics + exclusions
   experiments/metrics.py → D, Delta, Recovery (unclamped, guarded)
+  analysis/promptsets.py → Stage 3 deterministic IOI prompt-set generator
+                         (tokenizer-filtered single-token words; three
+                         templates; swap/third/resample corruptions; token
+                         alignment asserted, misaligned draws rejected)
+  analysis/components.py → Stage 3 exact per-component effects: Rec_D/Rec_P
+                         (denoising) and Abl_D (zero/mean ablation) for all
+                         156 components
+  analysis/atp.py      → Stage 3 attribution patching (gradient × activation
+                         difference; explicit grad recipe because parameters
+                         are frozen; first-order limitation stated)
+  analysis/stats.py    → Stage 3 hand-rolled statistics (numpy only):
+                         rankdata/spearman/bootstrap CI/permutation null/
+                         top-k overlap
   analysis/dla.py      → Stage 2 direct logit attribution (reconciliation-
                          checked decomposition of the final residual)
   analysis/lens.py     → Stage 2 logit lens (final LN + unembed per stage)
   model_runtime/loader.py → thread-safe TransformerBridge singleton
   model_runtime/engine.py → predict / capture / attention_pattern /
                          run_patched / patched_logits (logits-only helper
-                         shared with run_patched; outputs unchanged)
+                         shared with run_patched; outputs unchanged) /
+                         ablated_logits + interpolated_patch_logits
+                         (Stage 3 ablation and AtP linearity-gate helpers)
   storage/db.py        → SQLite (outputs/experiments.db): id, config, results JSON
         │
         ▼
@@ -98,6 +124,55 @@ milestones (0.05 / 0.2 / 0.5 / 0.9 / 1.0); live job status JSON carries
 Independent cross-checks (raw HF transformers, no backend imports):
 `scripts/reference_dla_lens.py` and `scripts/reference_sweep.py` (see
 `docs/V2_PROGRESS.md` for observed differences and how to run them).
+
+## Prompt sets, components, AtP, study (v2, Stage 3)
+
+- **Prompt sets** (`analysis/promptsets.py`): deterministic given `(n, seed)`
+  via `random.Random(seed)`. Word pools are filtered through the REAL
+  tokenizer on first use (names must be single-token with AND without the
+  leading space, because the first subject stands sentence-initially). Three
+  templates; template × S2-role balanced as n allows. Every prompt carries
+  `swap`/`third`/`resample` corruptions, all asserted token-aligned with the
+  clean prompt; misaligned draws are rejected and counted, never accepted.
+- **Exact per-component effects** (`analysis/components.py`): one clean cache
+  (all `attn.hook_z` + `mlp.hook_out`) per prompt; 156 patched runs per
+  (prompt, corruption) via `engine.patched_logits` give `D_patched` and
+  `P_patched` (both metrics from the same runs) → `Rec_D`, `Rec_P`. Ablation
+  runs in the CLEAN direction via `engine.ablated_logits` (zeros, or a
+  leave-one-out mean over the other prompts of the same template; two-pass
+  design). `Abl_D = D_clean − D_ablated` in raw logit units.
+  Consistency gate: per-head `Rec_D[swap]` for the default IOI pair equals the
+  Stage 2 `layer_head` sweep within 1e-4 (tested).
+- **Attribution patching** (`analysis/atp.py`): one grad-enabled forward +
+  backward on the corrupted prompt (hook on `hook_embed` creates the graph
+  because parameters are frozen; `retain_grad` on every `hook_z`/`mlp.hook_out`,
+  NOT detached). `AtP_D(c) = Σ (a_clean − a_corr) · dD/da |_corr`;
+  `Rec_AtP = AtP_D / (D_clean − D_corr)`. Gradients are read inside the try
+  block; the `finally` drops the graph so nothing leaks into later requests
+  (tested). Linearity gate: `engine.interpolated_patch_logits` (alpha
+  interpolation) central-difference matches `AtP_D` (Pearson > 0.999, tested).
+  Known limitation, stated everywhere it is shown: AtP is first-order and
+  unreliable under saturated attention.
+- **Statistics** (`analysis/stats.py`): hand-rolled numpy (no scipy) —
+  average-rank Spearman (constant input → `None`), percentile bootstrap CI,
+  permutation null, top-k overlap + random expectation k·k/144.
+- **Study job** (`experiments/study.py`, `POST /api/study`): pipeline per
+  prompt — clean cache, 3 corrupted baselines, exact denoising for 3
+  corruptions × both metrics, AtP (swap/D), DLA on the clean run, then a
+  second pass for zero/mean ablation. Pre-registered analysis (PAPER_NOTES
+  §4b, committed before any full run): exclusion rule
+  `|D_clean − D_corr| < 0.5` per (prompt, corruption), model accuracy =
+  fraction with `D_clean > 0` (headline numbers repeated on that subset),
+  RQ1 Spearman + bootstrap CI + permutation null, RQ2 pairwise Spearman +
+  top-k overlap with bootstrap CIs, known-heads anchor (descriptive only).
+  Persisted with `job_type: "study"` before `complete`; cancelled/failed
+  studies leave no partial results.
+- **Reference checks** (raw HF, no backend imports):
+  `scripts/reference_atp.py` (Rec_AtP on 3 prompts, tol 2e-3) and
+  `scripts/reference_components.py` (Rec_D/Rec_P + zero ablation on all 156
+  components and mean ablation on 20, from a study export, tol 5e-3).
+  `scripts/make_figures.py` renders the report figures as hand-written SVG
+  (no matplotlib) from a completed study into git-ignored `outputs/paper/`.
 
 ## Intervention semantics (the core science)
 

@@ -19,7 +19,10 @@ from ..config import (
     validate_hook_name,
 )
 from ..experiments import sweeps  # noqa: F401  (registers the "sweep" job type)
+from ..experiments import study as study_job
 from ..experiments.jobs import RUNNER, ExperimentValidationError
+
+study_job.register()  # registers the "study" job type (validate/run)
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER, ModelNotLoadedError
 from ..provenance import collect as provenance_collect
@@ -349,6 +352,23 @@ def create_sweep(req: SweepRequest) -> dict:
     experiments). Poll GET /api/experiments/{job_id} for status/results."""
     try:
         job = RUNNER.submit(req.model_dump(), job_type="sweep")
+    except ExperimentValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"job_id": job.job_id, "status": job.status}
+
+
+class StudyRequest(BaseModel):
+    n_prompts: int = Field(default=40, ge=4, le=100)
+    seed: int = Field(default=0, ge=0)
+
+
+@router.post("/study")
+def create_study(req: StudyRequest) -> dict:
+    """Submit a Stage 3 study job (one heavy job at a time, shared with
+    experiments and sweeps). Poll GET /api/experiments/{job_id} for
+    status/progress/results."""
+    try:
+        job = RUNNER.submit(req.model_dump(), job_type="study")
     except ExperimentValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return {"job_id": job.job_id, "status": job.status}

@@ -319,6 +319,141 @@ export interface SweepJobStatus {
   progress_message: string;
 }
 
+// ---- Stage 3: study ----
+
+export interface MeanCi {
+  mean: number | null;
+  ci_low: number | null;
+  ci_high: number | null;
+  n: number;
+  n_invalid: number;
+}
+
+export interface Rq1Group {
+  signed: MeanCi;
+  abs: MeanCi;
+  n_components: number;
+  low_resolution: boolean;
+}
+
+export interface Rq1Block {
+  n_prompts: number;
+  prompt_ids: string[];
+  methods: Record<"atp" | "dla", Record<"heads" | "mlps" | "all", Rq1Group>>;
+  null: Record<"heads" | "mlps" | "all", { p2_5: number | null; p97_5: number | null; note: string }>;
+  beats_control: Record<"atp" | "dla", Record<"heads" | "mlps" | "all", boolean>>;
+  beats_control_rule: string;
+}
+
+export interface OverlapMatrix {
+  matrix: (number | null)[][];
+  ci_low: (number | null)[][];
+  ci_high: (number | null)[][];
+}
+
+export interface Rq2 {
+  condition_names: string[];
+  n_per_condition: Record<string, number>;
+  spearman: {
+    matrix: (number | null)[][];
+    ci_low: (number | null)[][];
+    ci_high: (number | null)[][];
+    note: string;
+  };
+  topk: {
+    k5: OverlapMatrix;
+    k10: OverlapMatrix;
+    expected_random: { k5: number; k10: number; note?: string };
+  };
+  prompt_averaged_vectors: Record<string, number[] | null>;
+}
+
+export interface KnownHeadsReference {
+  task?: string;
+  verified_against_paper?: boolean;
+  note?: string;
+  groups?: { group: string; heads: string[] }[];
+  error?: string;
+}
+
+export interface StudyAnchors {
+  known_heads_reference: KnownHeadsReference;
+  ranking_basis: string;
+  descriptive_only: boolean;
+  mean_ranks_by_group: Record<string, { heads: string[]; ranks: number[]; mean_rank: number | null }> | null;
+}
+
+export interface StudyPromptRecord {
+  id: string;
+  template_id: number;
+  names: { A: string; B: string; C: string };
+  place: string;
+  obj: string;
+  s2_role: string;
+  clean_text: string;
+  candidate_a: string;
+  candidate_b: string;
+  corruptions: { swap: string | null; third: string | null; resample: string | null };
+  s2_position: number;
+  end_position: number;
+  n_tokens: number;
+}
+
+export interface StudyBaseline {
+  D_corr?: number;
+  P_corr?: number;
+  abs_D_diff?: number;
+  excluded: boolean;
+  missing?: boolean;
+}
+
+export interface StudyPerPrompt {
+  id: string;
+  template_id: number;
+  s2_role: string;
+  D_clean: number;
+  P_clean: number;
+  baselines: Record<string, StudyBaseline>;
+  rec_d: Record<string, number[] | null>;
+  rec_p: Record<string, number[] | null>;
+  atp: number[] | null;
+  dla: number[] | null;
+  abl_zero: number[] | null;
+  abl_mean: number[] | null;
+}
+
+export interface StudyResult {
+  job_type: "study";
+  params: { n_prompts: number; seed: number };
+  direction: string;
+  metrics: Record<string, string>;
+  exclusion_rule: string;
+  prompt_set: {
+    prompts: StudyPromptRecord[];
+    rejected_draws: number;
+    template_counts: Record<string, number>;
+    s2_role_counts: Record<string, number>;
+  };
+  model_accuracy: number;
+  exclusions: Record<string, number>;
+  per_prompt: StudyPerPrompt[];
+  baselines_per_prompt: Record<string, unknown>[];
+  summary: { rq1: { all_prompts: Rq1Block; subset_D_clean_gt0: Rq1Block }; rq2: Rq2; anchors: StudyAnchors };
+  provenance: Record<string, unknown>;
+  elapsed_seconds: number;
+}
+
+export interface StudyJobStatus {
+  id: string;
+  status: ExperimentStatus;
+  config?: unknown;
+  results: StudyResult | null;
+  error: string | null;
+  type: string;
+  progress: number;
+  progress_message: string;
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -410,6 +545,13 @@ export const api = {
     }),
   jobStatus: (id: string) =>
     call<SweepJobStatus>(`/api/experiments/${id}`),
+  studyStatus: (id: string) =>
+    call<StudyJobStatus>(`/api/experiments/${id}`),
+  startStudy: (spec: { n_prompts?: number; seed?: number }) =>
+    call<{ job_id: string; status: string }>("/api/study", {
+      method: "POST",
+      body: JSON.stringify(spec),
+    }),
   dla: (taskId: string, pairId: string | null, run: "clean" | "corrupted") =>
     call<DlaResult>("/api/analysis/dla", {
       method: "POST",

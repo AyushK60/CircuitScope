@@ -579,3 +579,46 @@ input[type="range"], input[type="checkbox"] { accent-color: var(--accent); }
 @media (max-width: 900px) { .inspector-sticky { position: static; } }
 
 .hero-viz .hero-model { filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.3)); }
+
+/* ---- Stage 3: Study page tables ---- */
+
+.study-table th, .study-table td {
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid var(--line-0);
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.85rem;
+}
+.study-table thead th {
+  color: var(--text-2);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--line-1);
+}
+.study-table tbody th[scope="row"] { color: var(--text-1); white-space: nowrap; font-family: var(--font-mono); font-weight: 400; }
+.study-table td.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.study-table.overlap-matrix td { text-align: center; min-width: 3.2rem; }
+.head-chip-row { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.head-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-2);
+  border: 1px solid var(--line-0);
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.head-chip .badge {
+  font-style: normal;
+  font-size: 0.68rem;
+  color: var(--accent);
+  border: 1px solid var(--accent-dim, var(--accent));
+  border-radius: 3px;
+  padding: 0 0.25rem;
+}
+.caveat-list { color: var(--text-1); font-size: 0.92rem; line-height: 1.5; padding-left: 1.2rem; }
+.caveat-list li { margin-bottom: 0.5rem; }

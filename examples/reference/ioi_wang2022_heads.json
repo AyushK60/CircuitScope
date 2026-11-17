@@ -1,0 +1,54 @@
+{
+  "task": "ioi_gpt2_small",
+  "description": "Head groups from Wang et al. (2022), 'Interpretability in the Wild: the circuit induced in GPT-2 small by the indirect-object-identification (IOI) task', ICLR 2023. Used ONLY as a descriptive anchor in Stage 3 (mean rank of known heads by Rec_D[swap]); no result depends on this file.",
+  "source": {
+    "citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+    "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+  },
+  "verified_against_paper": false,
+  "note": "transcribed from memory; reviewer must verify against the paper",
+  "groups": [
+    {
+      "group": "name_movers",
+      "heads": ["9.9", "10.0", "9.6"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    },
+    {
+      "group": "negative_name_movers",
+      "heads": ["10.7", "11.10"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    },
+    {
+      "group": "s_inhibition",
+      "heads": ["7.3", "7.9", "8.6", "8.10"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    },
+    {
+      "group": "induction",
+      "heads": ["5.5", "5.8", "5.9", "6.9"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    },
+    {
+      "group": "duplicate_token",
+      "heads": ["0.1", "0.10", "3.0"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    },
+    {
+      "group": "previous_token",
+      "heads": ["2.2", "4.11"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    },
+    {
+      "group": "backup_name_movers",
+      "heads": ["9.0", "9.7", "10.1", "10.2", "10.6", "10.10", "11.2", "11.9"],
+      "source_citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
+      "url": "https://openreview.net/forum?id=NpsVSN6o4ul"
+    }
+  ]
+}
