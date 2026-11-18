@@ -9,6 +9,7 @@ import {
   type TaskSummary,
 } from "../api/client";
 import SweepHeatmap from "../components/SweepHeatmap";
+import PlainWords from "./report/PlainWords";
 
 /**
  * Sweeps page: patching sweeps (denoising), direct logit attribution (DLA)
@@ -247,6 +248,7 @@ export default function Sweeps({ health }: { health: Health | null }) {
               behaviour; near 0 means that site alone does not matter for this metric. This is causal evidence
               about the patch, not proof the component is "the" circuit member.
             </p>
+            {jobId && <PlainWords jobId={jobId} />}
           </>
         ) : (
           !running &&

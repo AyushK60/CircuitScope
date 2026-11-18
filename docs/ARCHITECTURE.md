@@ -200,3 +200,71 @@ D_patched 1.9426, Recovery 0.9148.
   honest states.
 - GPT-2 block order rendered: pre-LN (x → LN1 → attn → + → LN2 → MLP → +),
   matching the running model, with residual paths drawn as violet dashed edges.
+
+## Explain package, report job, glossary (v2, Stage 4)
+
+New backend package `backend/app/explain/` (all pure text machinery; no model
+access, no LLM):
+
+- `thresholds.py` — every qualitative boundary in one place: recovery buckets
+  (0.8 / 0.4 / 0.1 / −0.1), DLA magnitude buckets (1.0 / 0.3 raw logit units),
+  the live trust-check tolerances (final-cell recovery 1e-3, last-block
+  unchanged 1e-4, baseline contrast 1e-3) and the curious readability limits
+  (mean ≤ 18 words, longest ≤ 28, Flesch ≥ 60). Formatting helpers
+  `fmt_num` / `fmt_pct` / `ordinal` render "n/a" for undefined values.
+- `templates.py` — every generated sentence as data: one template per claim
+  with its `claim_type`, its declared placeholders and its text at all three
+  levels (curious / student / expert). Placeholders use `$name` (filled by a
+  strict regex substitution; missing ones raise); glossary terms use
+  `{{term:id|display}}` markers, validated against the glossary at import.
+- `story.py` — pure functions from compact stored result dicts to claim
+  objects `{id, level, text, claim_type, evidence}`. Facts are picked by
+  declared deterministic procedures (largest lens jump; argmax recovery over
+  early/late block rows excluding the identity cell; top-3/top-10 by value
+  with index tie-breaks; group counts over the top 10). The compaction helpers
+  (`compact_sweep`, `compact_dla`, `compact_lens`, `compact_study`,
+  `compact_prediction`, `compact_reference`) build the same dicts stored in
+  `sections[].data`, so every evidence path resolves.
+- `lint.py` — the claim lint used by tests AND at runtime: banned
+  words/phrases at all levels (principle 4), glossary-marker validation, and
+  the curious-only readability limits + banned-idiom list. A report/export
+  that lints badly fails honestly (500/failed job) instead of shipping.
+- `glossary.py` — loader for the shared `examples/glossary.json`.
+
+New job type `"report"` (`backend/app/experiments/report.py`), registered from
+`routes.py` like sweep/study. Steps: prediction (one forward pass, top token +
+candidate probabilities) → logit lens → layer×position sweep → layer×head
+sweep → DLA (all reusing the Stage 2/3 implementations; sub-sweeps run under a
+rescaled `_PhaseCtx` so progress stays monotonic) → optional study load
+(validated at submit time → 422 for unknown / non-study / incomplete) →
+section assembly → lint. Results: `sections[]` (id, title, question, claims,
+compact `data`, `evidence_tier`, analogy, `trust`), `lint` (ok + curious
+readability), `provenance`, `generated_at` (provenance timestamp only).
+
+Trust panel data (Task 5) is computed live from stored data per section:
+DLA reconciliation, lens-final identity, sweep invariants (final-cell
+recovery == 1 within 1e-3; non-final positions of the last block unchanged
+within 1e-4), baseline contrast gate + warnings, study exclusion recount,
+prediction-vs-lens cross-check. Failed checks carry `ok: false` and the UI
+renders them in red with the number.
+
+Endpoints (additive):
+- `POST /api/report` `{task_id, pair_id?, study_job_id?}` → `{job_id, status}`;
+  poll `GET /api/experiments/{job_id}` (config persisted with
+  `"job_type": "report"`, so the Playground history filter hides it).
+- `GET /api/report/{job_id}/export?fmt=md&level=curious|student|expert` →
+  Markdown (claim bullets, key-number tables, trust panels, analogy notes,
+  provenance footer); linted; 404 for non-report jobs.
+- `POST /api/explain` `{job_id, level}` → claims for completed `sweep`/`study`
+  jobs; the server reads the stored results, the client never supplies data.
+
+Shared glossary: `examples/glossary.json` (20 terms × 3 levels + analogies
+with mandatory `breaks_when`), loaded by `backend/app/explain/glossary.py`
+and `frontend/src/lib/glossary.ts`. `<Term>` renders dotted-underline
+keyboard-focusable buttons with an accessible popover (Escape closes,
+`aria-describedby`). `GlossaryList` is reachable from the Report and Learn
+pages. Frontend: `frontend/src/pages/Report.tsx` (route `report`, nav label
+"Report" after "Study"), `pages/report/` components (claims + evidence
+disclosure, trust panel, analogy box, lens sparkline, "In plain words" box
+reused on Sweeps and Study). Reading level persists in localStorage
+(`lib/level.ts`, try/catch). No new dependencies.

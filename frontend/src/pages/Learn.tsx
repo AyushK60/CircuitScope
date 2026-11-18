@@ -1,4 +1,5 @@
 import { useState } from "react";
+import GlossaryList from "../components/GlossaryList";
 
 type Depth = "simple" | "context" | "technical";
 
@@ -333,6 +334,8 @@ export default function Learn() {
           downloads once (~500 MB) into the Hugging Face cache and is reused afterwards.
         </p>
       </div>
+
+      <GlossaryList />
     </main>
   );
 }

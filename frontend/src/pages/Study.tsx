@@ -9,6 +9,7 @@ import {
 import Rq1Table from "./study/Rq1Table";
 import OverlapMatrix from "./study/OverlapMatrix";
 import TopHeads from "./study/TopHeads";
+import PlainWords from "./report/PlainWords";
 
 /**
  * Study page (Stage 3): the pre-registered prompt-set study. Every number
@@ -318,6 +319,7 @@ export default function Study({ health }: { health: Health | null }) {
                 |D_clean − D_corr| &lt; 0.5 are excluded (counted above); no other prompt was dropped.
               </li>
             </ul>
+            {jobId && <PlainWords jobId={jobId} />}
           </section>
         </>
       )}

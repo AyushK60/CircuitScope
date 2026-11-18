@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 
 from ..analysis.dla import compute_dla
 from ..analysis.lens import compute_logit_lens
+from ..explain import lint as explain_lint
+from ..explain import story as report_story
 from ..config import (
     CAPTURABLE_HOOKS,
     MAX_LAYERS,
@@ -19,10 +21,12 @@ from ..config import (
     validate_hook_name,
 )
 from ..experiments import sweeps  # noqa: F401  (registers the "sweep" job type)
+from ..experiments import report as report_job
 from ..experiments import study as study_job
 from ..experiments.jobs import RUNNER, ExperimentValidationError
 
 study_job.register()  # registers the "study" job type (validate/run)
+report_job.register()  # registers the "report" job type (validate/run)
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER, ModelNotLoadedError
 from ..provenance import collect as provenance_collect
@@ -372,6 +376,100 @@ def create_study(req: StudyRequest) -> dict:
     except ExperimentValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return {"job_id": job.job_id, "status": job.status}
+
+
+class ReportRequest(BaseModel):
+    task_id: str
+    pair_id: str | None = None
+    study_job_id: str | None = None
+
+
+@router.post("/report")
+def create_report(req: ReportRequest) -> dict:
+    """Submit a Stage 4 Circuit Report job (one heavy job at a time, shared
+    with experiments/sweeps/studies). Poll GET /api/experiments/{job_id}."""
+    try:
+        job = RUNNER.submit(req.model_dump(), job_type="report")
+    except ExperimentValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"job_id": job.job_id, "status": job.status}
+
+
+@router.get("/report/{job_id}/export")
+def export_report(job_id: str, fmt: str = "md", level: str = "curious") -> Any:
+    """Markdown export of a completed report at the requested reading level.
+    404 for unknown ids and for non-report jobs."""
+    if fmt != "md":
+        raise HTTPException(status_code=400, detail="fmt must be md")
+    job = RUNNER.get(job_id)
+    if job is not None and job.type != "report":
+        raise HTTPException(status_code=404, detail="not a report job")
+    stored = db.get_experiment(job_id) if job is None else None
+    if stored is not None and (stored.get("config") or {}).get("job_type") != "report":
+        raise HTTPException(status_code=404, detail="not a report job")
+    payload = (job.results if job is not None else None) or (stored or {}).get("results")
+    if not payload:
+        raise HTTPException(status_code=404, detail="no completed report for this id")
+    from fastapi import Response
+
+    from ..explain.templates import LEVELS
+    from ..experiments.report import export_markdown
+
+    if level not in LEVELS:
+        raise HTTPException(status_code=422, detail="level must be curious, student or expert")
+    md = export_markdown(payload, level)
+    problems = explain_lint.lint_markdown(md, level)
+    if problems:
+        raise HTTPException(status_code=500, detail="export lint failed: " + "; ".join(problems[:10]))
+    return Response(
+        content=md,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="report_{job_id}_{level}.md"'},
+    )
+
+
+class ExplainRequest(BaseModel):
+    job_id: str
+    level: str = Field(default="curious", pattern="^(curious|student|expert)$")
+
+
+@router.post("/explain")
+def explain_job(req: ExplainRequest) -> dict:
+    """Plain-words claims for a COMPLETED sweep or study job. The server reads
+    the stored results; the client never supplies data."""
+    job = RUNNER.get(req.job_id)
+    results = None
+    if job is not None and job.results is not None:
+        results = job.results
+    else:
+        stored = db.get_experiment(req.job_id)
+        if stored is not None:
+            results = stored.get("results")
+    if not results:
+        raise HTTPException(status_code=404, detail="no completed results for this job id")
+    job_type = results.get("job_type")
+    if job_type == "sweep":
+        compact = report_story.compact_sweep(results)
+        if results.get("mode") == "layer_position":
+            claims = report_story.story_sweep_position({"sweep": compact})
+        else:
+            claims = report_story.story_sweep_heads({"sweep": compact, "dla": None})
+    elif job_type == "study":
+        claims = report_story.story_study(report_story.compact_study(results))
+    else:
+        raise HTTPException(
+            status_code=422, detail=f"job type {job_type!r} cannot be explained (sweep or study only)"
+        )
+    problems = explain_lint.lint_claims(claims)
+    if problems:
+        raise HTTPException(status_code=500, detail="explain lint failed: " + "; ".join(problems[:10]))
+    return {
+        "job_id": req.job_id,
+        "job_type": job_type,
+        "level": req.level,
+        "claims": [c for c in claims if c["level"] == req.level],
+        "lint": {"ok": True},
+    }
 
 
 @router.get("/tasks")

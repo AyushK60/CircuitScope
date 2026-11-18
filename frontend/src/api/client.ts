@@ -454,6 +454,87 @@ export interface StudyJobStatus {
   progress_message: string;
 }
 
+// ---- Stage 4: report + explain ----
+
+export type ReadingLevel = "curious" | "student" | "expert";
+
+export interface ReportClaim {
+  id: string;
+  level: ReadingLevel;
+  text: string;
+  claim_type: "measured" | "interpretation" | "caveat";
+  evidence: string[];
+}
+
+export interface ReportAnalogy {
+  id: string;
+  title: string;
+  text: string;
+  breaks_when: string;
+}
+
+export interface ReportTrustCheck {
+  id: string;
+  label: string;
+  value: number | string | null;
+  tolerance: number | null;
+  ok: boolean;
+  comparison: string;
+}
+
+export interface ReportTrust {
+  measured: string;
+  against: { label: string; value: unknown; note?: string }[];
+  checks: ReportTrustCheck[];
+  warnings: string[];
+  not_shown: string[];
+}
+
+export interface ReportSection {
+  id: string;
+  title: string;
+  question: string;
+  claims: ReportClaim[];
+  data: Record<string, unknown>;
+  evidence_tier: "single prompt, live" | "multi-prompt study, saved";
+  analogy: ReportAnalogy | null;
+  trust: ReportTrust;
+}
+
+export interface ReportResult {
+  job_type: "report";
+  task_id: string;
+  pair_id: string;
+  study_job_id: string | null;
+  direction: string;
+  candidate_a: string;
+  candidate_b: string;
+  tokens_clean: string[];
+  sections: ReportSection[];
+  lint: { ok: boolean; curious_readability: Record<string, number> };
+  provenance: Record<string, unknown>;
+  generated_at: string;
+}
+
+export interface ReportJobStatus {
+  id: string;
+  status: ExperimentStatus;
+  config?: unknown;
+  results: ReportResult | null;
+  error: string | null;
+  type: string;
+  progress: number;
+  progress_message: string;
+}
+
+export interface ExplainResponse {
+  job_id: string;
+  job_type: "sweep" | "study";
+  level: ReadingLevel;
+  claims: ReportClaim[];
+  lint: { ok: boolean };
+}
+
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -565,5 +646,19 @@ export const api = {
         top_k: topK,
         ...(candidateA && candidateB ? { candidate_a: candidateA, candidate_b: candidateB } : {}),
       }),
+    }),
+  // ---- Stage 4 ----
+  startReport: (spec: { task_id: string; pair_id?: string | null; study_job_id?: string | null }) =>
+    call<{ job_id: string; status: string }>("/api/report", {
+      method: "POST",
+      body: JSON.stringify(spec),
+    }),
+  reportStatus: (id: string) => call<ReportJobStatus>(`/api/experiments/${id}`),
+  reportExportUrl: (id: string, level: ReadingLevel) =>
+    `${API_BASE}/api/report/${id}/export?fmt=md&level=${level}`,
+  explain: (jobId: string, level: ReadingLevel = "curious") =>
+    call<ExplainResponse>("/api/explain", {
+      method: "POST",
+      body: JSON.stringify({ job_id: jobId, level }),
     }),
 };

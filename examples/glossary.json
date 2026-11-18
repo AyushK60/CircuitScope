@@ -1,0 +1,202 @@
+{
+  "$comment": "Shared glossary for CircuitScope v2 Stage 4. Single source for backend templates (backend/app/explain/glossary.py) and the frontend (frontend/src/lib/glossary.ts). Each term has three levels; curious definitions must pass the claim lint (short sentences, simple words). Every analogy has a mandatory breaks_when line. This is fixed content written by hand — no LLM generated text at runtime.",
+  "terms": {
+    "token": {
+      "display": "token",
+      "curious": "A token is a chunk of text the model reads. It can be a whole word or a piece of a word.",
+      "student": "The model does not read letters: text is split into tokens from a fixed vocabulary of about 50,000 chunks. A leading space matters: 'Mary' and ' Mary' are different tokens.",
+      "expert": "GPT-2 uses byte-level BPE. Token ids are mapped to vectors by the embedding matrix W_E; TransformerBridge prepends a BOS token (id 50256), shifting all positions by one.",
+      "see_also": ["score", "prompt_set"]
+    },
+    "probability": {
+      "display": "probability",
+      "curious": "A probability says how likely something is, from 0 to 1. All of them add up to 1.",
+      "student": "The probability of a token is its score turned into a share of the total over the whole vocabulary, so all probabilities together sum to 1.",
+      "expert": "p(token) = softmax(logits)[token] over the full vocabulary (50,257 entries for GPT-2). Probabilities are reported, not logits, so magnitudes are comparable across prompts.",
+      "see_also": ["score", "token"]
+    },
+    "score": {
+      "display": "score (logit)",
+      "curious": "A score is the model's raw number for one next token. A higher score means the model picks it as more likely.",
+      "student": "The score (logit) of a token is the model's raw output for that token before probabilities are computed. Higher scores mean higher probabilities, but the scale has no fixed meaning.",
+      "expert": "logits = ln_final(x) · W_U at the final position; shape [vocab]. No unembedding bias in GPT-2. D = logit(A) − logit(B) is the quantity patching experiments move.",
+      "see_also": ["score_gap", "probability"]
+    },
+    "score_gap": {
+      "display": "score gap",
+      "curious": "The score gap is one candidate's score minus the other's. A positive gap means the model prefers the first.",
+      "student": "The score gap D = logit(candidate A) − logit(candidate B) at the final position. Patching experiments measure how much of D comes back after an intervention.",
+      "expert": "D = (W_U[:,a] − W_U[:,b]) · ln_final(x_final). Recovery = (D_patched − D_corr) / (D_clean − D_corr), unclamped, null on near-zero denominators.",
+      "see_also": ["score", "recovery", "baseline"]
+    },
+    "residual_stream": {
+      "display": "residual stream",
+      "curious": "The residual stream is the model's shared scratchpad. Each block reads it and adds its result back.",
+      "student": "The residual stream is the vector that flows through the model. Each block reads it and adds its attention and MLP results on top, so every block can use what earlier blocks wrote.",
+      "expert": "r_{l+1} = r_l + Attn_l(LN1(r_l)) + MLP_l(LN2(...)). Components' outputs sum linearly into r, which is why direct logit attribution can decompose the final logits.",
+      "analogy": {
+        "text": "Think of the residual stream as a whiteboard all blocks share. Each block reads the board, works on it, and adds its note. The final answer is read off the board at the end.",
+        "breaks_when": "A whiteboard note can be erased or overwritten. The residual stream is only ever added to; nothing is erased, and blocks cannot change what earlier blocks wrote."
+      },
+      "see_also": ["block", "direct_contribution"]
+    },
+    "attention_head": {
+      "display": "attention head",
+      "curious": "An attention head is one small part of a block. It looks back at earlier tokens and pulls in their information.",
+      "student": "Each block's attention is split into 12 independent heads. A head chooses which earlier tokens to read from and writes what it finds into the stream. GPT-2 Small has 12 × 12 = 144 heads.",
+      "expert": "Head h computes A = softmax(Q_h K_hᵀ/√d_head + causal mask), out = A·V_h, projected by its slice of W_O. hook_z stores the pre-projection values; the smallest patchable unit.",
+      "analogy": {
+        "text": "Think of an attention head as a spotlight. For each new token, the head shines on some earlier tokens and takes light from them.",
+        "breaks_when": "A spotlight only illuminates. A head also transforms what it takes, and 'looking at' a token does not mean 'using' it. Attention patterns are not causal evidence."
+      },
+      "see_also": ["block", "patching", "mlp"]
+    },
+    "mlp": {
+      "display": "MLP",
+      "curious": "The MLP is the other part of a block. It works on each token on its own, without looking at other tokens.",
+      "student": "The MLP is a small two-layer network applied to each token's stream position separately. Attention moves information between tokens; the MLP transforms it in place.",
+      "expert": "MLP(x) = GELU(x·W_in + b_in)·W_out + b_out, per position. CircuitScope patches blocks.{i}.mlp.hook_out (the sublayer output) and attributes blocks.{i}.mlp.hook_out in DLA.",
+      "see_also": ["attention_head", "block"]
+    },
+    "block": {
+      "display": "block (layer)",
+      "curious": "A block is one processing step of the model. GPT-2 Small has 12 blocks in a row, numbered 0 to 11.",
+      "student": "A block (also called a layer) contains one attention sublayer and one MLP sublayer. The blocks run in order, and each adds its results into the residual stream.",
+      "expert": "Blocks are pre-LN transformers blocks: Attn(LN1(x)) and MLP(LN2(x)) added residually. blocks.{i}.hook_out is the residual stream after block i — the primary patch site.",
+      "see_also": ["residual_stream", "attention_head", "mlp"]
+    },
+    "patching": {
+      "display": "patching",
+      "curious": "Patching copies one signal from the clean run into the corrupted run. If the answer comes back, that signal carried it.",
+      "student": "Activation patching re-runs the model on the corrupted prompt with one internal signal replaced by its value from the clean run (denoising). If the clean answer returns, that signal carried the information the answer needs.",
+      "expert": "Forward hook replaces the activation at blocks.{i}... with the cloned clean-run tensor, then the corrupted prompt is re-run. Metric: Recovery = (D_patched − D_corr)/(D_clean − D_corr). Direction is fixed: clean → corrupted (denoising).",
+      "analogy": {
+        "text": "Patching is like swapping one note between two students' answer sheets, then regrading. If the grade moves, the note carried that part of the answer.",
+        "breaks_when": "Students read whole sheets. The model re-runs with two runs' signals mixed, and one note may matter only together with other notes still in place."
+      },
+      "see_also": ["ablation", "recovery", "corrupted_prompt"]
+    },
+    "ablation": {
+      "display": "ablation",
+      "curious": "Ablation replaces a part's output with nothing, or with an average, in the clean run. If the answer breaks, that part was needed.",
+      "student": "Ablation silences one component in the clean run (zero ablation) or replaces it with its average over similar prompts (mean ablation). If the score gap drops, the component was doing something useful.",
+      "expert": "Abl_D = D_clean − D_ablated (raw logit units). Zero ablation is necessity-style evidence per component; mean ablation uses leave-one-out template-family means to control for prompt-specific information.",
+      "analogy": {
+        "text": "Ablation is like covering part of a student's answer with a blank page. Then we see whether the student still passes.",
+        "breaks_when": "A student might redo the missing part from memory. GPT-2 has no memory beyond the current pass, but other components can take over the covered role, so zero effect can hide redundancy."
+      },
+      "see_also": ["patching", "control"]
+    },
+    "recovery": {
+      "display": "recovery",
+      "curious": "Recovery says how much of the clean score gap comes back after patching. 1 means all of it; 0 means none of it.",
+      "student": "Recovery = (D_patched − D_corrupted) / (D_clean − D_corrupted). It is the share of the clean score gap that returns when one clean activation is copied into the corrupted run. Values are not clamped and can be negative or above 1.",
+      "expert": "Recovery is the fraction of the baseline contrast restored by the patch. Denominator near zero → null (reported as n/a, never clamped); negative values mean the patch pushes the corrupted run further from the clean answer.",
+      "see_also": ["score_gap", "patching", "baseline"]
+    },
+    "direct_contribution": {
+      "display": "direct contribution (DLA)",
+      "curious": "The direct contribution says how much one part pushes the final scores by itself. It ignores help that flows through later blocks.",
+      "student": "Direct logit attribution (DLA) splits the final score gap into per-component pieces: how much each head, MLP, or embedding pushes toward one candidate over the other, straight into the readout. Effects through later blocks are not included.",
+      "expert": "DLA(c) = ((c − mean(c))/s · γ) · w with w = W_U[:,a] − W_U[:,b], s from the full residual. The terms telescope: Σ DLA(c) + β·w = D exactly (reconciliation identity). This linearity makes it a read of the residual stream, not independent reruns.",
+      "see_also": ["residual_stream", "score_gap", "patching"]
+    },
+    "logit_lens": {
+      "display": "logit lens",
+      "curious": "The logit lens reads the model's notes after each block and turns them into a guess of the final answer. It is a rough trace, not a record of what the model did.",
+      "student": "The logit lens applies the final LayerNorm and unembedding to the residual stream after each block, giving a running guess of the answer. Early blocks are not trained to be read this way, so early guesses are a heuristic view only.",
+      "expert": "lens_i = LN_final(r_i) · W_U applied per stage (embeddings, then blocks 0..11 output). Final stage must reproduce the model's real logits exactly (checked live); earlier stages are untrained readouts and must not be read as the model's 'thoughts'.",
+      "analogy": {
+        "text": "The logit lens is like asking someone to say their best guess while a sentence is only half built. Each block's stage is one more guess.",
+        "breaks_when": "The half-built notes were never meant to be read as words. Early guesses are not what the model 'was thinking' — the readout is one the model only uses at the very end."
+      },
+      "see_also": ["residual_stream", "score_gap"]
+    },
+    "attribution_patching": {
+      "display": "attribution patching",
+      "curious": "Attribution patching is a fast way to guess what patching would find, using one extra pass. It is close when the change is small, and can be off otherwise.",
+      "student": "Attribution patching approximates the patching effect from gradients: effect ≈ (a_clean − a_corrupted) · gradient of the metric at the corrupted activation. One backward pass replaces thousands of patched runs; it is known to be unreliable when attention saturates.",
+      "expert": "AtP_c = (a_clean − a_corr) · ∂D/∂a |_corr, summed per component over positions, normalised to Rec_AtP. First-order approximation: fails when the metric is non-linear in the activation (e.g. saturated attention). Cross-checked against exact patching with Spearman rank correlation.",
+      "see_also": ["patching", "rank_correlation"]
+    },
+    "rank_correlation": {
+      "display": "rank correlation (Spearman)",
+      "curious": "Rank correlation compares two rankings. 1 means the same order, minus 1 the opposite order, and 0 no match.",
+      "student": "The Spearman rank correlation compares the order of items in two lists, ignoring the raw values. It is used here to compare head rankings from different methods (exact patching vs attribution patching vs DLA).",
+      "expert": "Spearman ρ = Pearson correlation of the rank vectors (average ranks for ties). Computed over the 144 heads; per-prompt values are pooled with a bootstrap 95% CI over prompts and compared with a permutation null.",
+      "see_also": ["confidence_interval", "control"]
+    },
+    "confidence_interval": {
+      "display": "confidence interval",
+      "curious": "A confidence interval is a range computed by resampling the prompts. The true value most likely sits inside the range.",
+      "student": "The 95% confidence interval comes from resampling the prompts many times (bootstrap) and recomputing the statistic. If the interval is wide, the number depends a lot on which prompts were drawn.",
+      "expert": "Percentile bootstrap, 2000 resamples over prompts, numpy.random.default_rng(seed) for reproducibility. The pre-registered RQ1 rule compares the CI lower bound against the permutation null's 97.5th percentile.",
+      "see_also": ["prompt_set", "rank_correlation"]
+    },
+    "control": {
+      "display": "control (random baseline)",
+      "curious": "A control is a check where no real effect is expected. If the control moves anyway, the test may be broken.",
+      "student": "A control shows what the measurement gives when there should be nothing to find. Here: random head rankings (permutation null) and the expected overlap of two random top-10 lists (about 0.69 of 10 heads).",
+      "expert": "Controls: per-prompt permutation null for rank correlations (1000 label permutations, seeded); expected random top-k overlap k·k/144 (≈0.69 for k=10); the near-zero-baseline rejection gate for sweeps.",
+      "see_also": ["rank_correlation", "baseline"]
+    },
+    "prompt_set": {
+      "display": "prompt set",
+      "curious": "A prompt set is a list of sentences made from fixed templates. Running many prompts shows what holds beyond one example.",
+      "student": "The study generates sentences from three fixed templates with random names, places and objects (seeded, so it can be reproduced). Statistics over the set show what holds beyond a single example.",
+      "expert": "Deterministic generation with random.Random(seed): 3 templates × S2-role balanced, word pools filtered through the real tokenizer (single-token names with and without the leading space). Corruptions are token-aligned or the draw is rejected and counted.",
+      "see_also": ["corrupted_prompt", "confidence_interval"]
+    },
+    "corrupted_prompt": {
+      "display": "corrupted prompt",
+      "curious": "The corrupted prompt is a changed copy of the clean sentence. The change makes the model give the wrong answer.",
+      "student": "The corrupted prompt changes one detail of the clean sentence (for example who gives the object), so the model's answer moves to the wrong candidate. Patching measures how much of the clean answer can be restored.",
+      "expert": "Three corruption types in the study: swap (S2/S3 exchange), third (new word inserted), resample (another prompt of the same template). Exclusion rule: a (prompt, corruption) pair is dropped when |D_clean − D_corr| < 0.5.",
+      "see_also": ["baseline", "prompt_set"]
+    },
+    "baseline": {
+      "display": "baseline",
+      "curious": "A baseline is a starting number to compare with. Here it is the score gap before any patching.",
+      "student": "The baselines are the score gap on the clean prompt (D_clean) and on the corrupted prompt (D_corrupted). Recovery measures progress between them; if they are nearly equal, the experiment is rejected as meaningless.",
+      "expert": "check_baselines: |D_clean − D_corrupted| < 1e-3 → the sweep is rejected; < 0.5 → a stability warning is attached (small denominators amplify noise). The contrast gate is a pre-registered exclusion rule in the study.",
+      "see_also": ["recovery", "score_gap", "control"]
+    }
+  },
+  "analogies": [
+    {
+      "id": "shared_whiteboard",
+      "term_id": "residual_stream",
+      "title": "a shared whiteboard",
+      "text": "Think of the residual stream as a whiteboard that all blocks share. Each block reads the board, works on it, and adds its note. The final answer is read off the board at the end.",
+      "breaks_when": "A whiteboard note can be erased or overwritten. The residual stream is only ever added to; nothing is erased, and blocks cannot change what earlier blocks wrote."
+    },
+    {
+      "id": "spotlight",
+      "term_id": "attention_head",
+      "title": "a spotlight",
+      "text": "Think of an attention head as a spotlight. For each new token, the head shines on some earlier tokens and takes light from them.",
+      "breaks_when": "A spotlight only illuminates. A head also transforms what it takes, and 'looking at' a token does not mean 'using' it. Attention patterns are not causal evidence."
+    },
+    {
+      "id": "note_swap",
+      "term_id": "patching",
+      "title": "swapping a note between two students' answers",
+      "text": "Patching is like swapping one note between two students' answer sheets, then regrading. If the grade moves, the note carried that part of the answer.",
+      "breaks_when": "Students read whole sheets. The model re-runs with two runs' signals mixed, and one note may matter only together with other notes still in place."
+    },
+    {
+      "id": "covered_answer",
+      "term_id": "ablation",
+      "title": "covering part of an answer",
+      "text": "Ablation is like covering part of a student's answer with a blank page. Then we see whether the student still passes.",
+      "breaks_when": "A student might redo the missing part from memory. GPT-2 has no memory beyond the current pass, but other components can take over the covered role, so zero effect can hide redundancy."
+    },
+    {
+      "id": "half_finished",
+      "term_id": "logit_lens",
+      "title": "reading a half-finished sentence out loud",
+      "text": "The logit lens is like asking someone to say their best guess while a sentence is only half built. Each block's stage is one more guess.",
+      "breaks_when": "The half-built notes were never meant to be read as words. Early guesses are not what the model 'was thinking' — the readout is one the model only uses at the very end."
+    }
+  ]
+}
