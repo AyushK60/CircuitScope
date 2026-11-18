@@ -36,7 +36,7 @@
       "expert": "r_{l+1} = r_l + Attn_l(LN1(r_l)) + MLP_l(LN2(...)). Components' outputs sum linearly into r, which is why direct logit attribution can decompose the final logits.",
       "analogy": {
         "text": "Think of the residual stream as a whiteboard all blocks share. Each block reads the board, works on it, and adds its note. The final answer is read off the board at the end.",
-        "breaks_when": "A whiteboard note can be erased or overwritten. The residual stream is only ever added to; nothing is erased, and blocks cannot change what earlier blocks wrote."
+        "breaks_when": "A whiteboard note can be erased. Blocks only add to the residual stream and do not overwrite earlier notes, but a later note can cancel an earlier one."
       },
       "see_also": ["block", "direct_contribution"]
     },
@@ -168,7 +168,7 @@
       "term_id": "residual_stream",
       "title": "a shared whiteboard",
       "text": "Think of the residual stream as a whiteboard that all blocks share. Each block reads the board, works on it, and adds its note. The final answer is read off the board at the end.",
-      "breaks_when": "A whiteboard note can be erased or overwritten. The residual stream is only ever added to; nothing is erased, and blocks cannot change what earlier blocks wrote."
+      "breaks_when": "A whiteboard note can be erased. Blocks only add to the residual stream and do not overwrite earlier notes, but a later note can cancel an earlier one."
     },
     {
       "id": "spotlight",

@@ -326,8 +326,10 @@ def build_sections(cfg: dict, steps: dict) -> list[dict]:
     )
 
     # ---- which_words (layer x position sweep) ---------------------------------
-    early = explain_story._best_cell(pos_sweep, explain_story.EARLY_BLOCKS) or {}
-    late = explain_story._best_cell(pos_sweep, explain_story.LATE_BLOCKS) or {}
+    _rec = pos_sweep.get("recovery") or []
+    _identity = {(len(_rec) - 1, len(_rec[-1]) - 1)} if _rec and _rec[-1] else set()
+    early = explain_story._best_cell(pos_sweep, explain_story.EARLY_BLOCKS, exclude=_identity) or {}
+    late = explain_story._best_cell(pos_sweep, explain_story.LATE_BLOCKS, exclude=_identity) or {}
     words_data = {"sweep": pos_sweep, "early": early, "late": late}
     pos_checks = _sweep_invariant_checks(pos_sweep) + [_baseline_contrast_check(pos_sweep)]
     sections.append(
@@ -407,6 +409,10 @@ def build_sections(cfg: dict, steps: dict) -> list[dict]:
 
     # ---- vs_paper ---------------------------------------------------------------
     top10 = explain_story.top10_by_recovery(head_sweep) if head_sweep.get("recovery") else []
+    if reference and reference.get("groups"):
+        _membership = {g["group"]: set(g.get("heads", [])) for g in reference["groups"]}
+        for _e in top10:
+            _e["groups"] = [gid for gid, hs in _membership.items() if _e["label"] in hs]
     paper_data = {
         "sweep": head_sweep,
         "reference": reference,
@@ -726,7 +732,7 @@ def _section_table(s: dict) -> list[str]:
         if e:
             rows.append(("strongest early cell", f"block {e.get('layer')} · {e.get('token')} · recovery {fmt_num(e.get('recovery'), 2)}"))
         if l:
-            rows.append(("strongest late cell", f"block {l.get('layer')} · {l.get('token')} · recovery {fmt_num(l.get('recovery'), 2)}"))
+            rows.append(("strongest late cell (trivial last-block, last-word cell excluded)", f"block {l.get('layer')} · {l.get('token')} · recovery {fmt_num(l.get('recovery'), 2)}"))
     elif sid == "which_parts" and data.get("sweep"):
         for e in data.get("top_recovery") or []:
             rows.append((f"recovery rank {e['rank']}", f"head {e['label']} · {fmt_num(e['recovery'], 2)}"))

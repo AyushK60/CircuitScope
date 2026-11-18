@@ -219,7 +219,7 @@ def compact_study(study_result: dict) -> dict:
     names = rq2.get("condition_names") or []
     k10 = ((rq2.get("topk") or {}).get("k10") or {}).get("matrix") or []
     if names and k10:
-        for cond in ("third_D", "resample_D", "abl_zero_D", "abl_mean_D"):
+        for cond in ("third_D", "resample_D", "swap_P", "resample_P", "abl_zero_D", "abl_mean_D"):
             if cond in names:
                 j = names.index(cond)
                 v = k10[0][j] if k10[0] is not None and j < len(k10[0]) else None
@@ -499,7 +499,9 @@ def story_agreement_with_paper(data: dict | None) -> list[dict]:
     rank_of = _rank_of(sweep)
 
     n_in_groups = sum(1 for e in top10 if e["groups"])
-    claims += _mk("paper.overall", {"n_in_groups": n_in_groups}, ["top10", PROC_TOP10])
+    n_known = len({h for g in reference["groups"] for h in g.get("heads", [])})
+    chance = fmt_num(TOP_K * n_known / N_HEADS, 1)
+    claims += _mk("paper.overall", {"n_in_groups": n_in_groups, "chance": chance}, ["top10", PROC_TOP10, "reference.groups"])
     for gid in order:
         if group_counts[gid] > 0:
             claims += _mk(
@@ -612,6 +614,15 @@ def story_study(study: dict | None) -> list[dict]:
             [
                 "study.stability",
                 "procedure: stored rq2.topk.k10 matrix, swap_D row vs third_D and resample_D",
+            ],
+        )
+    if stab.get("resample_P") is not None and stab.get("abl_zero_D") is not None:
+        claims += _mk(
+            "study.sensitivity",
+            {"k_p": stab["resample_P"], "k_zero": stab["abl_zero_D"]},
+            [
+                "study.stability",
+                "procedure: stored rq2.topk.k10 matrix, swap_D row vs resample_P and abl_zero_D",
             ],
         )
     return claims

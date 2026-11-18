@@ -359,3 +359,41 @@ def test_explain_endpoint_on_study_fixture(client):
 def test_explain_rejects_non_sweep_study_jobs(client, report_job):
     r = client.post("/api/explain", json={"job_id": report_job.job_id, "level": "curious"})
     assert r.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 review regressions (found by reading the generated report cold)
+# ---------------------------------------------------------------------------
+
+
+def test_which_words_table_cells_match_claims_and_exclude_identity(report_job):
+    """The stored/table 'late' cell must be the same non-trivial cell the claim
+    describes (the last-block, last-word identity cell always equals 1.0)."""
+    sec = next(s for s in report_job.results["sections"] if s["id"] == "which_words")
+    sweep = sec["data"]["sweep"]
+    last_l = len(sweep["recovery"]) - 1
+    last_p = len(sweep["recovery"][last_l]) - 1
+    for key in ("early", "late"):
+        cell = sec["data"][key]
+        assert (cell["layer"], cell["position"]) != (last_l, last_p)
+    late = sec["data"]["late"]
+    curious = {c["id"]: c["text"] for c in sec["claims"] if c["level"] == "curious"}
+    assert f"{late['recovery']:.2f}" in curious["words.late"]
+
+
+def test_vs_paper_top10_rows_carry_groups(report_job):
+    sec = next(s for s in report_job.results["sections"] if s["id"] == "vs_paper")
+    assert all("groups" in e for e in sec["data"]["top10"])
+    # at least one of our top-10 heads is a known head on the default pair
+    assert any(e["groups"] for e in sec["data"]["top10"])
+    curious = {c["id"]: c["text"] for c in sec["claims"] if c["level"] == "curious"}
+    assert "random list of 10 would hold about" in curious["paper.overall"]
+
+
+def test_study_sensitivity_claim_reports_metric_and_ablation_overlap(study_report_job):
+    how = next(s for s in study_report_job.results["sections"] if s["id"] == "how_sure")
+    curious = {c["id"]: c["text"] for c in how["claims"] if c["level"] == "curious"}
+    assert "study.sensitivity" in curious
+    # fixture matrix: off-diagonal overlaps are 7 of 10
+    assert "7 of 10" in curious["study.sensitivity"]
+    assert "does not stay the same" in curious["study.sensitivity"]

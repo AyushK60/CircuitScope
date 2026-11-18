@@ -192,19 +192,19 @@ TEMPLATES: dict[str, dict] = {
     # ---- vs_paper ---------------------------------------------------------------
     "paper.overall": {
         "claim_type": "measured",
-        "placeholders": ["n_in_groups"],
+        "placeholders": ["n_in_groups", "chance"],
         "levels": {
-            "curious": "$n_in_groups of our top 10 heads belong to a group from the published circuit list.",
-            "student": "$n_in_groups of our top 10 heads (by recovery) belong to at least one group from the published IOI circuit list.",
-            "expert": "Group membership of top-10 heads (by denoising recovery): $n_in_groups of 10 match ≥1 Wang et al. 2022 group.",
+            "curious": "$n_in_groups of our top 10 heads are on the published circuit list. A random list of 10 would hold about $chance.",
+            "student": "$n_in_groups of our top 10 heads (by recovery) belong to at least one group from the published IOI circuit list. A random set of 10 heads would contain about $chance such heads.",
+            "expert": "Group membership of top-10 heads (by denoising recovery): $n_in_groups of 10 match ≥1 Wang et al. 2022 group (expected under random selection: $chance).",
         },
     },
     "paper.group": {
         "claim_type": "measured",
         "placeholders": ["count", "group_label"],
         "levels": {
-            "curious": "$count of our top 10 belong to the $group_label group from the paper.",
-            "student": "$count of our top 10 heads belong to the $group_label group from the published circuit.",
+            "curious": "Heads from the $group_label group of the paper, among our top 10: $count.",
+            "student": "Heads from the published $group_label group among our top 10: $count.",
             "expert": "Top-10 overlap with $group_label: $count head(s).",
         },
     },
@@ -324,6 +324,15 @@ TEMPLATES: dict[str, dict] = {
             "curious": "The top 10 list is close across corruption types. Overlap with the swap run: $k_third of 10 for the third-word change, $k_resample of 10 for the resample change.",
             "student": "Ranking stability across corruption methods (pre-registered top-10 overlaps, swap_D row of the stored matrix): third-word corruption $k_third of 10, resample corruption $k_resample of 10.",
             "expert": "Top-10 stability (stored rq2.topk.k10, swap_D row): swap vs third_D $k_third/10; swap vs resample_D $k_resample/10.",
+        },
+    },
+    "study.sensitivity": {
+        "claim_type": "measured",
+        "placeholders": ["k_p", "k_zero"],
+        "levels": {
+            "curious": "But the top 10 list does not stay the same under every test. With chance scores and whole-sentence swaps it shares only $k_p of 10 heads with the swap run. With the {{term:ablation|cover-up test}} it shares $k_zero of 10.",
+            "student": "The ranking is not invariant to the test used (pre-registered top-10 overlaps, swap_D row): with the probability metric and resample corruption the overlap is $k_p of 10; with zero ablation it is $k_zero of 10. Metric and intervention type both change the ranking.",
+            "expert": "Top-10 overlap with swap_D (stored rq2.topk.k10): resample_P $k_p/10; abl_zero_D $k_zero/10. Rankings are not invariant to the metric (D vs P) or to the intervention (denoising vs ablation).",
         },
     },
     "study.not_run": {
