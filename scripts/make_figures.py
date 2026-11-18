@@ -228,7 +228,7 @@ def fig_group_ranks(res: dict) -> str:
         f'<text x="16" y="26" font-family="monospace" font-size="14" fill="{INK}">'
         f"Known-heads anchor: mean rank by prompt-averaged Rec_D[swap] (rank 1 = highest)</text>",
         f'<text x="16" y="46" font-family="monospace" font-size="11" fill="{MID}">'
-        f"descriptive only · head lists transcribed from memory (Wang et al. 2022), reviewer must verify · "
+        f"descriptive only · head lists verified against Wang et al. 2022 (includes the paper's fuzzy heads 0.10, 5.8, 5.9) · "
         f"n={res['params']['n_prompts']}, seed {res['params']['seed']}</text>",
     ]
     y = 90
