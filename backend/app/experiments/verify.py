@@ -343,6 +343,24 @@ def extract_max_diff(text: str) -> float | None:
     return max(values) if values else None
 
 
+def _remove_tree(path: pathlib.Path, attempts: int = 10) -> bool:
+    """Remove a temp tree, retrying briefly.
+
+    On Windows a file can stay locked for a moment after its process exits
+    (antivirus, indexer, or a handle closed just before). Retrying avoids a
+    leftover temp directory without hiding a persistent failure: the caller
+    gets False and the directory is reported in the job's error text.
+    """
+    for attempt in range(attempts):
+        if not path.exists():
+            return True
+        shutil.rmtree(path, ignore_errors=True)
+        if not path.exists():
+            return True
+        time.sleep(0.05 * (attempt + 1))
+    return not path.exists()
+
+
 def _run_reference(
     spec: dict, args: list[str], ctx, timeout: float, log_path: pathlib.Path
 ) -> tuple[int | None, str, bool]:
@@ -448,7 +466,7 @@ def run_verify(cfg: dict, ctx: JobContext) -> dict:
             "error": None if ok else f"reference script exited {exit_code} or exceeded tolerance",
         }
     finally:
-        shutil.rmtree(tmpdir, ignore_errors=True)
+        _remove_tree(tmpdir)
 
 
 # ---------------------------------------------------------------------------

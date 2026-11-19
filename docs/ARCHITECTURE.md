@@ -268,3 +268,53 @@ pages. Frontend: `frontend/src/pages/Report.tsx` (route `report`, nav label
 disclosure, trust panel, analogy box, lens sparkline, "In plain words" box
 reused on Sweeps and Study). Reading level persists in localStorage
 (`lib/level.ts`, try/catch). No new dependencies.
+
+## Reproduce, verify, agreement, tour (v2, Stage 5)
+
+New pieces (all additive; existing response shapes unchanged):
+
+- **`backend/app/reproduce/`** (`generate.py`, `runtime.py`). Generates standalone
+  Python scripts as text. The server never runs them. Each script embeds ONE JSON
+  literal (loaded with `json.loads`) holding prompts, candidates, hooks, positions,
+  stored numbers, tolerances and provenance. It imports only `torch`,
+  `transformers` and the standard library (checked by an AST test). Kinds:
+  `intervention`, `sweep`, `study_subset`, `report`, `dla`, `lens`.
+  Route: `POST /api/reproduce` (job kinds need a completed job of the matching
+  type; `dla` and `lens` are computed at request time).
+- **`backend/app/experiments/verify.py`**: job type `verify`. A registry of
+  reference checks (`dla_lens`, `sweep`, `components`, `atp`, `patch`; `feedforward`
+  is manual). The server computes the API-side numbers in process into
+  `outputs/verify_tmp/<job_id>/`, runs the reference script with a fixed argv
+  (`sys.executable`, script path, offline args; no shell, no user strings), parses
+  `max |api - reference|`, and removes the temp directory in a `finally` (with a
+  short retry for Windows file locks). Routes: `POST /api/verify`,
+  `GET /api/verify/status` (latest result per check; `stale` when the script's
+  SHA-256 changed).
+- **`backend/app/analysis/agreement.py`** and **`backend/app/experiments/agreement.py`**:
+  job type `agreement` (about 8 s). Exact `Rec_D` (reusing `analysis/components.py`),
+  AtP (`analysis/atp.py`) and DLA (`analysis/dla.py`) for all 156 components, with
+  statistics from `analysis/stats.py`. Route: `POST /api/agreement`.
+  The Stage 2 consistency gate (exact per-head values vs the `layer_head` sweep,
+  1e-4) is tested and shown live in the report.
+- **`backend/app/explain/`**: `story_agreement_methods` claims at three levels, with
+  thresholds in `thresholds.py` (Pearson 0.9 / 0.6; group difference 0.2). The
+  report job runs the agreement step and adds the `methods_agree` section after
+  `which_parts`. The Markdown export includes it.
+- **Frontend**: routes `verify` (Verify page, `pages/Verify.tsx`,
+  `pages/verify/VerificationCard.tsx`) and `tour` (Tour page, `pages/Tour.tsx`,
+  scene logic in `pages/tour/scenes.ts`). The Sweeps page gained the agreement
+  section (`components/AgreementScatter.tsx`). `components/ReproduceButton.tsx` is
+  on the Sweeps results, DLA and lens results, Study results and the Report header.
+  The download filename is read from `Content-Disposition`; the backend exposes
+  that header through CORS (`expose_headers`).
+
+Data flow for a reproduction download: UI button -> `api.reproduce` ->
+`POST /api/reproduce` -> generator reads the stored job (or recomputes `dla`/`lens`)
+-> script text -> Blob download. Nothing in this path executes user input or
+the generated script.
+
+Verification flow: UI "Run this check" -> `POST /api/verify` (one heavy job at a
+time; a second heavy job gets 422) -> temp inputs -> reference script subprocess
+(timeout and cancel terminate, then kill) -> result record persisted before
+`complete` (check id, ok, exit code, max diff, tolerance, elapsed, script SHA-256,
+git commit, model revision, versions, stdout tail, time).

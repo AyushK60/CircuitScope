@@ -31,6 +31,8 @@ def create_app():
         allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$",
         allow_methods=["*"],
         allow_headers=["*"],
+        # Stage 5: the browser needs the reproduce filename from Content-Disposition.
+        expose_headers=["Content-Disposition"],
     )
     app.include_router(router)
 

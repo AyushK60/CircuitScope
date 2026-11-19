@@ -281,15 +281,18 @@ export default function Tour({ health }: { health: Health | null }) {
 
   const [scene, setScene] = useState(0);
   const [paused, setPaused] = useState(false);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState<boolean>(
+    () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true,
+  );
   const [done, setDone] = useState(false);
   const pollRef = useRef<number | null>(null);
   const sceneRef = useRef<HTMLDivElement | null>(null);
-  const startedRef = useRef(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(mq.matches);
+    // Initial value comes from the lazy state initialiser; this effect only
+    // subscribes to changes (no synchronous setState here).
+    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    if (!mq) return;
     const onChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
     mq.addEventListener?.("change", onChange);
     return () => mq.removeEventListener?.("change", onChange);
@@ -342,8 +345,9 @@ export default function Tour({ health }: { health: Health | null }) {
   }, [loadVerify]);
 
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
+    // No "started once" guard: under StrictMode the effect runs, is cleaned up,
+    // and runs again. The first run's results are dropped by `cancelled`, so the
+    // second run must do the work (a guard here left the page stuck loading).
     let cancelled = false;
     (async () => {
       try {
