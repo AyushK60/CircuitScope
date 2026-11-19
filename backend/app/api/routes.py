@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from ..analysis.dla import compute_dla
@@ -21,15 +21,30 @@ from ..config import (
     validate_hook_name,
 )
 from ..experiments import sweeps  # noqa: F401  (registers the "sweep" job type)
+from ..experiments import agreement as agreement_job
 from ..experiments import report as report_job
 from ..experiments import study as study_job
+from ..experiments import verify as verify_job
 from ..experiments.jobs import RUNNER, ExperimentValidationError
 
 study_job.register()  # registers the "study" job type (validate/run)
 report_job.register()  # registers the "report" job type (validate/run)
+agreement_job.register()  # registers the "agreement" job type (validate/run)
+verify_job.register()  # registers the "verify" job type (validate/run)
 from ..model_runtime import engine
 from ..model_runtime.loader import ADAPTER, ModelNotLoadedError
 from ..provenance import collect as provenance_collect
+from ..reproduce.generate import (
+    KINDS as REPRODUCE_KINDS,
+    dla_data,
+    filename as reproduce_filename,
+    generate as generate_reproduce_script,
+    intervention_data,
+    lens_data,
+    report_data,
+    study_subset_data,
+    sweep_data,
+)
 from ..storage import db
 from ..tasks import registry as task_registry
 from ..tasks.registry import TASK_ID_PATTERN
@@ -350,6 +365,153 @@ def analysis_logit_lens(req: LogitLensRequest) -> dict:
     return {**result, "provenance": provenance_collect()}
 
 
+REPRODUCE_JOB_KINDS = {
+    "intervention": "intervention",
+    "sweep": "sweep",
+    "study_subset": "study",
+    "report": "report",
+}
+
+
+class ReproduceRequest(BaseModel):
+    kind: str
+    job_id: str | None = None
+    task_id: str | None = None
+    pair_id: str | None = None
+    run: str | None = Field(default=None, pattern="^(clean|corrupted)$")
+    text: str | None = Field(default=None, min_length=1, max_length=MAX_PROMPT_CHARS)
+    candidate_a: str | None = Field(default=None, max_length=32)
+    candidate_b: str | None = Field(default=None, max_length=32)
+    mode: str = Field(default="sample", pattern="^(sample|full)$")
+
+
+def _completed_result_for_reproduce(job_id: str, expected_type: str) -> tuple[dict, dict]:
+    """Load a COMPLETED job of the expected type (live record first, then DB).
+
+    Returns (results, config). A wrong type or an unfinished job is a 422, an
+    unknown id is a 404. The client never supplies the numbers.
+    """
+    job = RUNNER.get(job_id)
+    if job is not None:
+        status, results, config, job_type = job.status, job.results, job.config, job.type
+    else:
+        stored = db.get_experiment(job_id)
+        if stored is None:
+            raise HTTPException(status_code=404, detail="job not found")
+        status = stored.get("status")
+        results = stored.get("results")
+        config = stored.get("config") or {}
+        job_type = config.get("job_type") or ("intervention" if expected_type == "intervention" else "unknown")
+    if job_type != expected_type:
+        raise HTTPException(
+            status_code=422,
+            detail=f"job {job_id} is a {job_type!r} job; this reproduction kind needs a {expected_type!r} job",
+        )
+    if status != "complete" or not results:
+        raise HTTPException(status_code=422, detail=f"job {job_id} has no completed results")
+    return results, config
+
+
+@router.post("/reproduce")
+def reproduce(req: ReproduceRequest) -> Any:
+    """Return a standalone Python script that recomputes the displayed numbers.
+
+    The server only GENERATES text here; it never executes the script. All
+    inputs are validated against the existing limits and embedded as one JSON
+    literal by app.reproduce.generate.
+    """
+    if req.kind not in REPRODUCE_KINDS:
+        raise HTTPException(status_code=422, detail=f"unknown reproduce kind: {req.kind!r}")
+
+    if req.kind in REPRODUCE_JOB_KINDS:
+        if not req.job_id:
+            raise HTTPException(status_code=422, detail="job_id is required for this reproduce kind")
+        results, config = _completed_result_for_reproduce(
+            req.job_id, REPRODUCE_JOB_KINDS[req.kind]
+        )
+        try:
+            if req.kind == "intervention":
+                data = intervention_data(config, results)
+            elif req.kind == "sweep":
+                data = sweep_data(
+                    mode=results["mode"],
+                    clean_text=config["clean_text"],
+                    corrupted_text=config["corrupted_text"],
+                    candidate_a=config["candidate_a"],
+                    candidate_b=config["candidate_b"],
+                    baselines=results["baselines"],
+                    recovery=results["recovery"],
+                    d_patched=results["d_patched"],
+                    provenance=results.get("provenance"),
+                )
+            elif req.kind == "study_subset":
+                data = study_subset_data(results)
+                if not data["prompts"]:
+                    raise ValueError("this study has no usable prompt with stored swap/AtP values")
+            else:  # report
+                data = report_data(results, config)
+        except (KeyError, TypeError, ValueError) as e:
+            raise HTTPException(status_code=422, detail=f"cannot build this reproduction: {e}")
+        id_for_name = req.job_id
+    else:
+        # Synchronous analyses: recompute the "stored" numbers at request time
+        # with the same functions the analysis endpoints call.
+        if req.task_id:
+            pair = _task_for_analysis(req.task_id, req.pair_id)
+            text = pair.clean_text if (req.run or "clean") == "clean" else pair.corrupted_text
+            cand_a, cand_b = pair.candidate_a, pair.candidate_b
+            id_for_name = pair.id
+        else:
+            if not req.text:
+                raise HTTPException(status_code=422, detail="text (or task_id) is required")
+            text, cand_a, cand_b = req.text, req.candidate_a, req.candidate_b
+            id_for_name = "text"
+        if (cand_a is None) != (cand_b is None):
+            raise HTTPException(
+                status_code=422, detail="candidate_a and candidate_b must be provided together"
+            )
+        if req.kind == "dla" and (cand_a is None or cand_b is None):
+            raise HTTPException(status_code=422, detail="DLA reproduction needs both candidates")
+        try:
+            for cand in (cand_a, cand_b):
+                if cand is not None:
+                    ADAPTER.token_id_for_str(cand)
+            if req.kind == "dla":
+                result = compute_dla(text, cand_a, cand_b)
+                data = dla_data(
+                    text=text,
+                    candidate_a=cand_a,
+                    candidate_b=cand_b,
+                    dla_result=result,
+                    provenance=provenance_collect(),
+                )
+            else:
+                result = compute_logit_lens(text, cand_a, cand_b, 5)
+                data = lens_data(
+                    text=text,
+                    candidate_a=cand_a,
+                    candidate_b=cand_b,
+                    lens_result=result,
+                    provenance=provenance_collect(),
+                )
+        except ModelNotLoadedError:
+            raise HTTPException(status_code=503, detail="model not loaded yet")
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+
+    try:
+        script = generate_reproduce_script(req.kind, data, req.mode)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return Response(
+        content=script,
+        media_type="text/x-python",
+        headers={
+            "Content-Disposition": f'attachment; filename="{reproduce_filename(req.kind, id_for_name)}"'
+        },
+    )
+
+
 @router.post("/sweeps")
 def create_sweep(req: SweepRequest) -> dict:
     """Submit a patching sweep job (one heavy job at a time, shared with
@@ -376,6 +538,43 @@ def create_study(req: StudyRequest) -> dict:
     except ExperimentValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return {"job_id": job.job_id, "status": job.status}
+
+
+class AgreementRequest(BaseModel):
+    task_id: str
+    pair_id: str | None = None
+
+
+@router.post("/agreement")
+def create_agreement(req: AgreementRequest) -> dict:
+    """Submit a Stage 5 agreement job (exact vs AtP vs DLA). One heavy job at
+    a time, shared with experiments/sweeps/studies/reports."""
+    try:
+        job = RUNNER.submit(req.model_dump(), job_type="agreement")
+    except ExperimentValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"job_id": job.job_id, "status": job.status}
+
+
+class VerifyRequest(BaseModel):
+    check_id: str
+
+
+@router.post("/verify")
+def create_verify(req: VerifyRequest) -> dict:
+    """Submit one verification check. The server supplies every input; the
+    request carries only an allowlisted check id."""
+    try:
+        job = RUNNER.submit({"check_id": req.check_id}, job_type="verify")
+    except ExperimentValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return {"job_id": job.job_id, "status": job.status}
+
+
+@router.get("/verify/status")
+def verify_status() -> dict:
+    """Latest stored result per check, with script-hash staleness."""
+    return verify_job.verify_status()
 
 
 class ReportRequest(BaseModel):
@@ -456,9 +655,12 @@ def explain_job(req: ExplainRequest) -> dict:
             claims = report_story.story_sweep_heads({"sweep": compact, "dla": None})
     elif job_type == "study":
         claims = report_story.story_study(report_story.compact_study(results))
+    elif job_type == "agreement":
+        claims = report_story.story_agreement_methods(report_story.compact_agreement(results))
     else:
         raise HTTPException(
-            status_code=422, detail=f"job type {job_type!r} cannot be explained (sweep or study only)"
+            status_code=422,
+            detail=f"job type {job_type!r} cannot be explained (sweep, study or agreement only)",
         )
     problems = explain_lint.lint_claims(claims)
     if problems:

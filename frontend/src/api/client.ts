@@ -529,10 +529,156 @@ export interface ReportJobStatus {
 
 export interface ExplainResponse {
   job_id: string;
-  job_type: "sweep" | "study";
+  job_type: "sweep" | "study" | "agreement";
   level: ReadingLevel;
   claims: ReportClaim[];
   lint: { ok: boolean };
+}
+
+// ---- Stage 5: reproduce, verify, agreement, tour ----
+
+export type ReproduceKind = "intervention" | "sweep" | "study_subset" | "report" | "dla" | "lens";
+
+export interface ReproduceSpec {
+  kind: ReproduceKind;
+  job_id?: string | null;
+  task_id?: string | null;
+  pair_id?: string | null;
+  run?: "clean" | "corrupted" | null;
+  text?: string | null;
+  candidate_a?: string | null;
+  candidate_b?: string | null;
+  mode?: "sample" | "full";
+}
+
+export interface AgreementComponent {
+  label: string;
+  kind: "head" | "mlp";
+  layer: number;
+  head: number | null;
+}
+
+export interface AgreementScatterPoint extends AgreementComponent {
+  exact: number;
+  atp: number;
+  dla: number;
+}
+
+export interface AgreementMethodStats {
+  pearson_heads: number | null;
+  spearman_heads: number | null;
+  top10_overlap: number;
+  expected_random_top10: number;
+  pearson_groups: Record<string, { pearson: number | null; n: number }>;
+}
+
+export interface AgreementTopItem {
+  rank: number;
+  label: string;
+  index: number;
+  value: number;
+}
+
+export interface AgreementResult {
+  job_type: "agreement";
+  task_id: string;
+  pair_id: string;
+  direction: string;
+  candidate_a: string;
+  candidate_b: string;
+  labels: AgreementComponent[];
+  vectors: { exact: number[]; atp: number[]; dla: number[] };
+  scatter: AgreementScatterPoint[];
+  stats: {
+    atp: AgreementMethodStats;
+    dla: AgreementMethodStats;
+    procedure: string;
+  };
+  top10: { exact: AgreementTopItem[]; atp: AgreementTopItem[]; dla: AgreementTopItem[] };
+  baselines: { D_clean: number; D_corrupted: number; denominator: number };
+  dla_reconciliation: {
+    sum_of_terms: number;
+    model_D: number;
+    abs_error: number;
+    tolerance: number;
+    ok: boolean;
+  };
+  notes: string[];
+  method_notes: Record<string, string>;
+  provenance: Record<string, unknown>;
+  elapsed_seconds: number;
+}
+
+export interface AgreementJobStatus {
+  id: string;
+  status: ExperimentStatus;
+  config?: unknown;
+  results: AgreementResult | null;
+  error: string | null;
+  type: string;
+  progress: number;
+  progress_message: string;
+}
+
+export interface VerifyResult {
+  job_type: "verify";
+  job_id: string;
+  check_id: string;
+  title: string;
+  tolerance: number;
+  script: string;
+  ok: boolean;
+  exit_code: number | null;
+  max_diff: number | null;
+  elapsed_seconds: number;
+  stdout_tail: string;
+  error: string | null;
+  script_sha256?: string;
+  git_commit?: string;
+  model_revision?: string;
+  versions?: Record<string, string>;
+  checked_at?: string;
+}
+
+export interface VerifyCheckEntry {
+  check_id: string;
+  title: string;
+  what: string;
+  tolerance: number;
+  runtime: string;
+  manual: boolean;
+  script: string;
+  current_script_sha256: string | null;
+  status: "pass" | "fail" | "never run";
+  ok: boolean | null;
+  stale: boolean;
+  result: VerifyResult | null;
+}
+
+export interface VerifyStatus {
+  checks: VerifyCheckEntry[];
+  current_git_commit: string | null;
+}
+
+export interface VerifyJobStatus {
+  id: string;
+  status: ExperimentStatus;
+  config?: unknown;
+  results: VerifyResult | null;
+  error: string | null;
+  type: string;
+  progress: number;
+  progress_message: string;
+}
+
+/** Pull a filename out of a Content-Disposition header, with a safe fallback. */
+function dispositionFilename(header: string | null, fallback: string): string {
+  if (!header) return fallback;
+  const match = /filename="?([^";]+)"?/i.exec(header);
+  if (!match) return fallback;
+  // The backend generates these names; still keep only a bare file name.
+  const name = match[1].split(/[\\/]/).pop() ?? "";
+  return name || fallback;
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
@@ -661,4 +807,43 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ job_id: jobId, level }),
     }),
+  // ---- Stage 5 ----
+  reproduce: async (spec: ReproduceSpec): Promise<{ blob: Blob; filename: string }> => {
+    const res = await fetch(`${API_BASE}/api/reproduce`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(spec),
+    });
+    if (!res.ok) {
+      let detail = `${res.status} ${res.statusText}`;
+      try {
+        const body = await res.json();
+        if (body?.detail) detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      } catch {
+        /* keep status text */
+      }
+      throw new Error(detail);
+    }
+    const blob = await res.blob();
+    return {
+      blob,
+      filename: dispositionFilename(
+        res.headers.get("Content-Disposition"),
+        `circuitscope_repro_${spec.kind}.py`,
+      ),
+    };
+  },
+  verifyStatus: () => call<VerifyStatus>("/api/verify/status"),
+  startVerify: (checkId: string) =>
+    call<{ job_id: string; status: string }>("/api/verify", {
+      method: "POST",
+      body: JSON.stringify({ check_id: checkId }),
+    }),
+  verifyJob: (id: string) => call<VerifyJobStatus>(`/api/experiments/${id}`),
+  startAgreement: (spec: { task_id: string; pair_id?: string | null }) =>
+    call<{ job_id: string; status: string }>("/api/agreement", {
+      method: "POST",
+      body: JSON.stringify(spec),
+    }),
+  agreementStatus: (id: string) => call<AgreementJobStatus>(`/api/experiments/${id}`),
 };

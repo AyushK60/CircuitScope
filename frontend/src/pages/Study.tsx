@@ -9,6 +9,7 @@ import {
 import Rq1Table from "./study/Rq1Table";
 import OverlapMatrix from "./study/OverlapMatrix";
 import TopHeads from "./study/TopHeads";
+import ReproduceButton from "../components/ReproduceButton";
 import PlainWords from "./report/PlainWords";
 
 /**
@@ -320,6 +321,12 @@ export default function Study({ health }: { health: Health | null }) {
               </li>
             </ul>
             {jobId && <PlainWords jobId={jobId} />}
+            {jobId && (
+              <ReproduceButton
+                spec={{ kind: "study_subset", job_id: jobId, mode: "sample" }}
+                runtime="Recomputes exact Rec_D and Rec_AtP for the first 2 prompts (all 156 components); about 30–60 s."
+              />
+            )}
           </section>
         </>
       )}

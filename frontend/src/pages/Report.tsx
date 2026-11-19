@@ -11,6 +11,8 @@ import type { ReadingLevel } from "../lib/glossary";
 import { loadLevel, saveLevel } from "../lib/level";
 import SweepHeatmap from "../components/SweepHeatmap";
 import GlossaryList from "../components/GlossaryList";
+import AgreementScatter from "../components/AgreementScatter";
+import ReproduceButton from "../components/ReproduceButton";
 import { ClaimsList, type ReportSection } from "./report/Claims";
 import TrustPanel from "./report/TrustPanel";
 import AnalogyBox from "./report/AnalogyBox";
@@ -137,6 +139,34 @@ function SectionVisual({ section }: { section: ReportSection }) {
     if (overlap?.dla != null) rows.push({ label: "top-10 overlap exact/DLA", value: overlap.dla });
     return rows.length > 0 ? <TopBars rows={rows} /> : null;
   }
+  if (section.id === "methods_agree") {
+    const scatter = (data.scatter ?? []) as {
+      label: string;
+      kind: "head" | "mlp";
+      layer: number;
+      head: number | null;
+      exact: number;
+      atp: number;
+      dla: number;
+    }[];
+    if (scatter.length === 0) return null;
+    return (
+      <div className="grid-2" style={{ alignItems: "start" }}>
+        <AgreementScatter
+          title="Attribution patching vs exact patching"
+          xLabel="Exact recovery"
+          yLabel="AtP recovery"
+          points={scatter.map((p) => ({ ...p, x: p.exact, y: p.atp }))}
+        />
+        <AgreementScatter
+          title="Direct logit attribution vs exact patching"
+          xLabel="Exact recovery"
+          yLabel="DLA value"
+          points={scatter.map((p) => ({ ...p, x: p.exact, y: p.dla }))}
+        />
+      </div>
+    );
+  }
   return null;
 }
 
@@ -173,6 +203,9 @@ function SectionCard({ section, level }: { section: ReportSection; level: Readin
       {section.analogy && <AnalogyBox analogy={section.analogy} />}
       <SectionVisual section={section} />
       <TrustPanel trust={section.trust} />
+      <p className="inspector-meta">
+        <a href="#/verify">How was this checked? →</a>
+      </p>
     </section>
   );
 }
@@ -221,6 +254,21 @@ export default function Report({ health }: { health: Health | null }) {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, [jobId]);
+
+  // A tour (or a shared link) can point at a stored report: #/report?job=<id>.
+  useEffect(() => {
+    const query = window.location.hash.split("?")[1];
+    if (!query) return;
+    const id = new URLSearchParams(query).get("job");
+    if (!id) return;
+    api
+      .reportStatus(id)
+      .then((r) => {
+        setJob(r);
+        setJobId(id);
+      })
+      .catch((e) => setError(String(e.message ?? e)));
+  }, []);
 
   const running = job?.status === "running" || job?.status === "queued";
   const result: ReportResult | null = job?.status === "complete" ? job.results : null;
@@ -348,6 +396,12 @@ export default function Report({ health }: { health: Health | null }) {
               Download Markdown
             </a>
           </p>
+        )}
+        {result && jobId && (
+          <ReproduceButton
+            spec={{ kind: "report", job_id: jobId, mode: "sample" }}
+            runtime="The combined script runs DLA, the lens and both sweeps; about 30–60 s for --mode sample."
+          />
         )}
       </section>
 

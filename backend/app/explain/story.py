@@ -25,7 +25,14 @@ import numpy as np
 
 from ..analysis.stats import topk_overlap
 from .templates import LEVELS, fill_template, template_claim_type
-from .thresholds import fmt_num, fmt_pct, ordinal, recovery_predicate
+from .thresholds import (
+    AGREEMENT_GROUP_DIFF,
+    agreement_phrase,
+    fmt_num,
+    fmt_pct,
+    ordinal,
+    recovery_predicate,
+)
 
 N_HEADS = 144
 TOP_K = 10
@@ -163,6 +170,18 @@ def compact_dla(dla_result: dict) -> dict:
         "top": top,
         "most_negative": top[-1] if top else None,
         "notes": dla_result["notes"],
+        # All 171 terms, stored additively so the report reproduce script can
+        # recompute every one of them (Stage 5 Task 1).
+        "components": [
+            {
+                "name": c["name"],
+                "kind": c["kind"],
+                "layer": c.get("layer"),
+                "head": c.get("head"),
+                "value": c["value"],
+            }
+            for c in dla_result["components"]
+        ],
     }
 
 
@@ -239,6 +258,28 @@ def compact_study(study_result: dict) -> dict:
         "overlap": overlap,
         "stability": stability,
         "expected_random_k10": round(TOP_K * TOP_K / N_HEADS, 4),
+    }
+
+
+def compact_agreement(agreement_result: dict) -> dict:
+    """Compact one agreement result for the report section / explain endpoint.
+
+    The 144 exact head values are kept because the report's live consistency
+    check compares them with the layer x head sweep already in the report.
+    """
+    vectors = agreement_result.get("vectors") or {}
+    exact = vectors.get("exact") or []
+    return {
+        "task_id": agreement_result.get("task_id"),
+        "pair_id": agreement_result.get("pair_id"),
+        "scatter": agreement_result.get("scatter") or [],
+        "exact_heads": [float(v) for v in exact[:N_HEADS]],
+        "stats": agreement_result.get("stats") or {},
+        "top10": agreement_result.get("top10") or {},
+        "baselines": agreement_result.get("baselines") or {},
+        "dla_reconciliation": agreement_result.get("dla_reconciliation") or {},
+        "notes": agreement_result.get("notes") or [],
+        "method_notes": agreement_result.get("method_notes") or {},
     }
 
 
@@ -546,6 +587,68 @@ def story_agreement_with_paper(data: dict | None) -> list[dict]:
         ["top10", "reference.fuzzy_heads", PROC_TOP10],
     )
     claims += _mk("paper.reference", {}, ["reference.note", "reference.verified_against_paper"])
+    return claims
+
+
+def story_agreement_methods(data: dict | None) -> list[dict]:
+    """data: compact agreement result (stats, top10, notes).
+
+    The qualitative phrase comes from ``agreement_phrase`` at the declared
+    Pearson boundaries; the layer-group sentence is emitted only when both
+    group values exist and differ by more than AGREEMENT_GROUP_DIFF.
+    """
+    data = data or {}
+    stats = data.get("stats") or {}
+    atp = stats.get("atp") or {}
+    dla = stats.get("dla") or {}
+    if atp.get("pearson_heads") is None or dla.get("pearson_heads") is None:
+        return _not_run(
+            "whether exact patching, attribution patching and direct attribution agree",
+            "the agreement measurement on one task pair",
+            suffix="agreement",
+        )
+
+    claims: list[dict] = []
+    for method, block in (("atp", atp), ("dla", dla)):
+        key = f"agree.{method}_overall"
+        claims += _mk(
+            key,
+            {
+                "rho": fmt_num(block.get("pearson_heads"), 3),
+                "phrase": agreement_phrase(block["pearson_heads"], "the exact test"),
+                "overlap": block.get("top10_overlap", "n/a"),
+                "expected": fmt_num(block.get("expected_random_top10"), 1),
+            },
+            [
+                f"stats.{method}.pearson_heads",
+                f"stats.{method}.top10_overlap",
+                f"stats.{method}.expected_random_top10",
+                "fixed:agreement.phrase",
+            ],
+        )
+        groups = block.get("pearson_groups") or {}
+        early = (groups.get("blocks_0_5") or {}).get("pearson")
+        late = (groups.get("blocks_6_11") or {}).get("pearson")
+        if early is not None and late is not None and abs(early - late) > AGREEMENT_GROUP_DIFF:
+            if early >= late:
+                better, worse, rho_b, rho_w = "blocks 0 to 5", "blocks 6 to 11", early, late
+            else:
+                better, worse, rho_b, rho_w = "blocks 6 to 11", "blocks 0 to 5", late, early
+            claims += _mk(
+                "agree.groups",
+                {
+                    "better": better,
+                    "worse": worse,
+                    "rho_better": fmt_num(rho_b, 3),
+                    "rho_worse": fmt_num(rho_w, 3),
+                },
+                [
+                    f"stats.{method}.pearson_groups.blocks_0_5.pearson",
+                    f"stats.{method}.pearson_groups.blocks_6_11.pearson",
+                ],
+                suffix=method,
+            )
+    claims += _mk("agree.methods", {}, ["fixed:agree.methods"])
     return claims
 
 

@@ -112,7 +112,18 @@ export default function Landing({
   navigate,
 }: {
   health: Health | null;
-  navigate: (r: "explorer" | "playground" | "learn" | "lab") => void;
+  navigate: (
+    r:
+      | "explorer"
+      | "playground"
+      | "learn"
+      | "lab"
+      | "sweeps"
+      | "study"
+      | "report"
+      | "verify"
+      | "tour",
+  ) => void;
 }) {
   const [demo, setDemo] = useState<Prediction | null>(null);
   const [demoError, setDemoError] = useState<string | null>(null);
@@ -160,6 +171,15 @@ export default function Landing({
               <button onClick={() => navigate("playground")}>Predict &amp; Continue</button>
               <button onClick={() => navigate("lab")}>Neural Network Lab</button>
             </div>
+            <p className="schematic-note">
+              <button
+                className="ghost"
+                onClick={() => navigate("tour")}
+                style={{ textDecoration: "underline" }}
+              >
+                Take the 90-second tour →
+              </button>
+            </p>
             <p className="schematic-note">
               <span className={live ? "live-badge" : "static-badge"}>
                 {live ? "LIVE MODEL READY" : "MODEL LOADING"}

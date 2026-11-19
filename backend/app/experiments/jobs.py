@@ -193,6 +193,8 @@ class JobContext:
     def __init__(self, runner: "ExperimentRunner", job: JobRecord, cancel_flag: threading.Event | None) -> None:
         self._runner = runner
         self._job = job
+        self.job_id = job.job_id
+        self.config = job.config
         self.cancel_flag = cancel_flag  # read by run fns that forward it downstream
 
     def report(self, progress: float, message: str) -> None:

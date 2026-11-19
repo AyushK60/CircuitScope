@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import {
   api,
+  type AgreementJobStatus,
+  type AgreementResult,
   type DlaResult,
   type Health,
   type LensResult,
@@ -9,6 +11,8 @@ import {
   type TaskSummary,
 } from "../api/client";
 import SweepHeatmap from "../components/SweepHeatmap";
+import AgreementScatter from "../components/AgreementScatter";
+import ReproduceButton from "../components/ReproduceButton";
 import PlainWords from "./report/PlainWords";
 
 /**
@@ -54,6 +58,10 @@ export default function Sweeps({ health }: { health: Health | null }) {
   const [lensBusy, setLensBusy] = useState(false);
   const [lensError, setLensError] = useState<string | null>(null);
 
+  const [agreeJobId, setAgreeJobId] = useState<string | null>(null);
+  const [agreeJob, setAgreeJob] = useState<AgreementJobStatus | null>(null);
+  const [agreeError, setAgreeError] = useState<string | null>(null);
+
   useEffect(() => {
     api
       .tasks()
@@ -96,6 +104,20 @@ export default function Sweeps({ health }: { health: Health | null }) {
   const sweepResult: SweepResult | null = job?.status === "complete" ? job.results : null;
   const running = job?.status === "running" || job?.status === "queued";
 
+  useEffect(() => {
+    if (!agreeJobId) return;
+    const id = window.setInterval(() => {
+      api
+        .agreementStatus(agreeJobId)
+        .then((r) => {
+          setAgreeJob(r);
+          if (r.status === "failed") setAgreeError(r.error ?? "agreement failed");
+        })
+        .catch((e) => setAgreeError(String(e.message ?? e)));
+    }, 400);
+    return () => clearInterval(id);
+  }, [agreeJobId]);
+
   const runSweep = () => {
     setSweepError(null);
     setJob(null);
@@ -128,6 +150,31 @@ export default function Sweeps({ health }: { health: Health | null }) {
       .catch((e) => setLensError(String(e.message ?? e)))
       .finally(() => setLensBusy(false));
   };
+
+  const runAgreement = () => {
+    setAgreeError(null);
+    setAgreeJob(null);
+    setAgreeJobId(null);
+    api
+      .startAgreement({ task_id: taskId, pair_id: null })
+      .then((r) => setAgreeJobId(r.job_id))
+      .catch((e) => setAgreeError(String(e.message ?? e)));
+  };
+
+  const agreementResult: AgreementResult | null =
+    agreeJob?.status === "complete" ? agreeJob.results : null;
+  const agreeRunning = agreeJob?.status === "running" || agreeJob?.status === "queued";
+  const sharedLabels = agreementResult
+    ? new Set(
+        agreementResult.top10.exact
+          .map((e) => e.label)
+          .filter(
+            (label) =>
+              agreementResult.top10.atp.some((x) => x.label === label) &&
+              agreementResult.top10.dla.some((x) => x.label === label),
+          ),
+      )
+    : new Set<string>();
 
   return (
     <main className="page">
@@ -249,6 +296,12 @@ export default function Sweeps({ health }: { health: Health | null }) {
               about the patch, not proof the component is "the" circuit member.
             </p>
             {jobId && <PlainWords jobId={jobId} />}
+            {jobId && (
+              <ReproduceButton
+                spec={{ kind: "sweep", job_id: jobId, mode: "sample" }}
+                runtime="The script checks a documented sample in about 15–40 s; --mode full checks every cell."
+              />
+            )}
           </>
         ) : (
           !running &&
@@ -350,6 +403,11 @@ export default function Sweeps({ health }: { health: Health | null }) {
                   {n}
                 </p>
               ))}
+              <ReproduceButton
+                spec={{ kind: "dla", task_id: taskId, pair_id: null, run: which as "clean" | "corrupted" }}
+                runtime="One raw forward pass with hooks; usually a few seconds."
+                compact
+              />
             </div>
           );
         })}
@@ -428,7 +486,209 @@ export default function Sweeps({ health }: { health: Health | null }) {
             <p className="inspector-meta" style={{ marginTop: "0.5rem" }}>
               {lensResult.note}
             </p>
+            <ReproduceButton
+              spec={{
+                kind: "lens",
+                text: lensText,
+                candidate_a: lensA || null,
+                candidate_b: lensB || null,
+                mode: "sample",
+              }}
+              runtime="Recomputes every stage with raw hooks; usually a few seconds."
+              compact
+            />
           </>
+        )}
+      </section>
+
+      {/* ---- 4. do the three methods agree? ---- */}
+      <section className="panel" aria-labelledby="agreement-heading">
+        <h2 id="agreement-heading">Do the three methods agree?</h2>
+        <p className="inspector-meta">
+          Exact patching (the reference), attribution patching (a cheap first-order approximation) and
+          direct logit attribution (direct pushes only) are compared on the same prompt pair, for all 144
+          heads and 12 MLPs. Agreement here is about these scores on this pair, not proof that the methods
+          measure the same thing.
+        </p>
+        <div style={{ display: "flex", gap: "0.6rem", margin: "0.8rem 0", flexWrap: "wrap" }}>
+          <button className="primary" onClick={runAgreement} disabled={!ready || agreeRunning}>
+            {agreeRunning ? "Measuring…" : "Run agreement measurement"}
+          </button>
+          {agreeRunning && agreeJobId && (
+            <button onClick={() => api.cancelExperiment(agreeJobId).catch(() => {})}>Cancel</button>
+          )}
+        </div>
+        {agreeRunning && agreeJob && (
+          <div style={{ margin: "0.6rem 0" }}>
+            <div className="inspector-meta" role="status" style={{ marginBottom: "0.25rem" }}>
+              {Math.round((agreeJob.progress ?? 0) * 100)}% — {agreeJob.progress_message || "running"}
+            </div>
+            <div style={{ background: "var(--bg-2)", borderRadius: 4, height: 10, overflow: "hidden" }}>
+              <div
+                style={{
+                  width: `${Math.round((agreeJob.progress ?? 0) * 100)}%`,
+                  height: "100%",
+                  background: "var(--sage)",
+                  transition: "width 0.3s",
+                }}
+              />
+            </div>
+          </div>
+        )}
+        {agreeError && (
+          <div className="state-banner error" role="alert" style={{ marginTop: "0.5rem" }}>
+            {agreeError}
+          </div>
+        )}
+        {agreementResult ? (
+          <>
+            <div className="metric-cards" style={{ margin: "0.8rem 0" }}>
+              <div className="metric-card">
+                <div className="name">AtP vs exact · Pearson</div>
+                <div className="value">
+                  {agreementResult.stats.atp.pearson_heads == null
+                    ? "n/a"
+                    : agreementResult.stats.atp.pearson_heads.toFixed(3)}
+                </div>
+                <div className="sub">
+                  top-10 overlap {agreementResult.stats.atp.top10_overlap}/10 · random{" "}
+                  {agreementResult.stats.atp.expected_random_top10.toFixed(2)}
+                </div>
+              </div>
+              <div className="metric-card">
+                <div className="name">DLA vs exact · Pearson</div>
+                <div className="value">
+                  {agreementResult.stats.dla.pearson_heads == null
+                    ? "n/a"
+                    : agreementResult.stats.dla.pearson_heads.toFixed(3)}
+                </div>
+                <div className="sub">
+                  top-10 overlap {agreementResult.stats.dla.top10_overlap}/10 · random{" "}
+                  {agreementResult.stats.dla.expected_random_top10.toFixed(2)}
+                </div>
+              </div>
+              <div className="metric-card">
+                <div className="name">DLA reconciliation</div>
+                <div className="value">
+                  {agreementResult.dla_reconciliation.abs_error.toExponential(2)}
+                </div>
+                <div className="sub">
+                  abs error vs tolerance {agreementResult.dla_reconciliation.tolerance} —{" "}
+                  {agreementResult.dla_reconciliation.ok ? "ok" : "MISMATCH"}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ alignItems: "start" }}>
+              <AgreementScatter
+                title="Attribution patching vs exact patching"
+                xLabel="Exact recovery"
+                yLabel="AtP recovery"
+                points={agreementResult.scatter.map((p) => ({
+                  label: p.label,
+                  kind: p.kind,
+                  layer: p.layer,
+                  head: p.head,
+                  x: p.exact,
+                  y: p.atp,
+                }))}
+              />
+              <AgreementScatter
+                title="Direct logit attribution vs exact patching"
+                xLabel="Exact recovery"
+                yLabel="DLA value"
+                points={agreementResult.scatter.map((p) => ({
+                  label: p.label,
+                  kind: p.kind,
+                  layer: p.layer,
+                  head: p.head,
+                  x: p.exact,
+                  y: p.dla,
+                }))}
+              />
+            </div>
+
+            <h3 style={{ marginTop: "1rem" }}>Top-10 heads by each method</h3>
+            <p className="inspector-meta">
+              A head appears in all three lists is marked &quot;shared&quot;. Badges carry the meaning;
+              colour is not required.
+            </p>
+            <div className="grid-3">
+              {(["exact", "atp", "dla"] as const).map((method) => (
+                <div key={method}>
+                  <h4>
+                    {method === "exact" ? "Exact patching" : method === "atp" ? "Attribution patching" : "DLA"}
+                  </h4>
+                  <ol className="tour-list">
+                    {agreementResult.top10[method].map((item) => (
+                      <li key={`${method}-${item.rank}`}>
+                        {item.label} · <span className="mono">{item.value.toFixed(3)}</span>{" "}
+                        {sharedLabels.has(item.label) && <span className="badge">shared</span>}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+
+            <div className="table-scroll" style={{ marginTop: "1rem" }}>
+              <table className="kv-table">
+                <caption>Agreement statistics over the 144 heads. Values are Pearson of raw values.</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Comparison</th>
+                    <th scope="col">Pearson</th>
+                    <th scope="col">Spearman</th>
+                    <th scope="col">Blocks 0–5</th>
+                    <th scope="col">Blocks 6–11</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(["atp", "dla"] as const).map((method) => {
+                    const s = agreementResult.stats[method];
+                    return (
+                      <tr key={method}>
+                        <td>{method === "atp" ? "AtP vs exact" : "DLA vs exact"}</td>
+                        <td className="mono">{s.pearson_heads == null ? "n/a" : s.pearson_heads.toFixed(3)}</td>
+                        <td className="mono">{s.spearman_heads == null ? "n/a" : s.spearman_heads.toFixed(3)}</td>
+                        <td className="mono">
+                          {s.pearson_groups.blocks_0_5?.pearson == null
+                            ? "n/a"
+                            : s.pearson_groups.blocks_0_5.pearson.toFixed(3)}
+                        </td>
+                        <td className="mono">
+                          {s.pearson_groups.blocks_6_11?.pearson == null
+                            ? "n/a"
+                            : s.pearson_groups.blocks_6_11.pearson.toFixed(3)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="inspector-meta">{agreementResult.stats.procedure}</p>
+
+            <div style={{ marginTop: "0.8rem" }}>
+              {(["exact", "atp", "dla"] as const).map((method) => (
+                <p key={method} className="inspector-meta">
+                  <strong>
+                    {method === "exact" ? "Exact patching" : method === "atp" ? "Attribution patching" : "DLA"}:
+                  </strong>{" "}
+                  {agreementResult.method_notes[method]}
+                </p>
+              ))}
+            </div>
+            {agreeJobId && <PlainWords jobId={agreeJobId} />}
+          </>
+        ) : (
+          !agreeRunning &&
+          !agreeError && (
+            <div className="state-banner info" role="status">
+              No agreement measurement yet — run one to compare the three methods on the selected task
+              pair. It takes about 8 seconds on CPU.
+            </div>
+          )
         )}
       </section>
     </main>

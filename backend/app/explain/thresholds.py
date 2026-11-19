@@ -32,6 +32,11 @@ TOL_FINAL_RECOVERY = 1e-3  # final-block final-position recovery == 1
 TOL_LASTBLOCK_UNCHANGED = 1e-4  # non-final positions in the last block unchanged
 MIN_BASELINE_CONTRAST = 1e-3  # |D_clean - D_corrupted| gate (matches sweeps.py)
 
+# --- agreement wording boundaries (Stage 5 Task 3) --------------------------
+AGREEMENT_CLOSE = 0.9  # Pearson >= 0.9 -> "lines up closely with"
+AGREEMENT_ROUGH = 0.6  # 0.6 <= Pearson < 0.9 -> "lines up roughly with"
+AGREEMENT_GROUP_DIFF = 0.2  # layer-group sentence only above this difference
+
 # --- readability limits (curious level; Stage 4 principle 7) ------------------
 MAX_MEAN_SENTENCE_WORDS = 18
 MAX_SENTENCE_WORDS = 28
@@ -65,6 +70,26 @@ def recovery_predicate(r: float, gap: str = "the score gap") -> str:
     if b == "little":
         return f"has little effect on {gap}"
     return f"pushes {gap} the other way"
+
+
+def agreement_bucket(r: float) -> str:
+    """Bucket id for a Pearson correlation between two methods' scores."""
+    r = float(r)
+    if r >= AGREEMENT_CLOSE:
+        return "close"
+    if r >= AGREEMENT_ROUGH:
+        return "rough"
+    return "loose"
+
+
+def agreement_phrase(r: float, method: str = "the exact test") -> str:
+    """Declared wording for a Pearson value; never stronger than the bucket."""
+    b = agreement_bucket(r)
+    if b == "close":
+        return f"lines up closely with {method}"
+    if b == "rough":
+        return f"lines up roughly with {method}"
+    return f"lines up only loosely with {method}"
 
 
 def dla_bucket(v: float) -> str:

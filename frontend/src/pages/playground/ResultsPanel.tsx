@@ -1,6 +1,7 @@
 import { api, type ExperimentRecord } from "../../api/client";
 import TokenRow from "../../components/TokenRow";
 import TopPredictions from "../../components/TopPredictions";
+import ReproduceButton from "../../components/ReproduceButton";
 import MetricCard from "./MetricCard";
 import type { RunState } from "./types";
 
@@ -105,6 +106,11 @@ export default function ResultsPanel({
                 Restore baseline
               </button>
             </div>
+            <ReproduceButton
+              spec={{ kind: "intervention", job_id: record!.id, mode: "sample" }}
+              runtime="One clean, one corrupted and one patched raw forward pass; a few seconds."
+              compact
+            />
           </div>
         </div>
         <p className="inspector-meta" style={{ marginTop: "0.8rem" }}>

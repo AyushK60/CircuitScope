@@ -108,6 +108,42 @@ def list_experiments(limit: int = 50) -> list[dict]:
     ]
 
 
+def latest_completed_with_job_type(job_type: str, limit: int = 500) -> list[dict]:
+    """Completed records whose persisted config has ``job_type``, newest first.
+
+    This is the read used by the verification panel (latest result per check)
+    and by checks that need the most recent completed study. It reads the
+    stored JSON; malformed rows are skipped rather than raising.
+    """
+    if _conn is None:
+        return []
+    with _CONN_LOCK:
+        rows = _conn.execute(
+            "SELECT id, created_at, status, config, results, error FROM experiments "
+            "WHERE status='complete' ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    out: list[dict] = []
+    for row in rows:
+        try:
+            config = json.loads(row[3])
+        except Exception:
+            continue
+        if not isinstance(config, dict) or config.get("job_type") != job_type:
+            continue
+        out.append(
+            {
+                "id": row[0],
+                "created_at": row[1],
+                "status": row[2],
+                "config": config,
+                "results": json.loads(row[4]) if row[4] else None,
+                "error": row[5],
+            }
+        )
+    return out
+
+
 def delete_experiment(exp_id: str) -> bool:
     if _conn is None:
         return False

@@ -75,7 +75,16 @@ def test_report_completes_with_all_sections(report_job):
     res = report_job.results
     assert res["job_type"] == "report"
     ids = [s["id"] for s in res["sections"]]
-    assert ids == ["answer", "where_formed", "which_words", "which_parts", "vs_paper", "how_sure", "limits"]
+    assert ids == [
+        "answer",
+        "where_formed",
+        "which_words",
+        "which_parts",
+        "methods_agree",
+        "vs_paper",
+        "how_sure",
+        "limits",
+    ]
     by_id = {s["id"]: s for s in res["sections"]}
     # no study attached: how_sure must say so, not invent numbers
     assert any("Not run yet" in c["text"] for c in by_id["how_sure"]["claims"] if c["level"] == "curious")

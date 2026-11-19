@@ -344,6 +344,43 @@ TEMPLATES: dict[str, dict] = {
             "expert": "study_job_id was not provided: the how_sure section has no data. The report engine renders 'not run yet' rather than substituting values from any other run.",
         },
     },
+    # ---- agreement (exact vs AtP vs DLA) ---------------------------------------------
+    "agree.atp_overall": {
+        "claim_type": "measured",
+        "placeholders": ["rho", "phrase", "overlap", "expected"],
+        "levels": {
+            "curious": "The fast {{term:attribution_patching|attribution patching}} $phrase on the 144 heads (Pearson $rho on a −1 to 1 scale). Its top 10 list shares $overlap of 10 heads with the exact test; chance is about $expected.",
+            "student": "{{term:attribution_patching|Attribution patching}} vs exact patching over the 144 head values: Pearson correlation $rho (it $phrase). The two top-10 lists share $overlap of 10 heads; two random lists would share about $expected.",
+            "expert": "Rec_AtP vs exact Rec_D, 144 heads: Pearson $rho; top-10 overlap $overlap/10 (random expectation $expected). Spearman and layer-group values are in the statistics table.",
+        },
+    },
+    "agree.dla_overall": {
+        "claim_type": "measured",
+        "placeholders": ["rho", "phrase", "overlap", "expected"],
+        "levels": {
+            "curious": "The {{term:direct_contribution|direct test}} $phrase on the 144 heads (Pearson $rho). Its top 10 list shares $overlap of 10 heads with the exact test; chance is about $expected.",
+            "student": "Direct logit attribution vs exact patching over the 144 head values: Pearson correlation $rho (it $phrase). The two top-10 lists share $overlap of 10 heads; two random lists would share about $expected.",
+            "expert": "DLA vs exact Rec_D, 144 heads: Pearson $rho; top-10 overlap $overlap/10 (random expectation $expected). DLA reads only direct effects, so this is not expected to be perfect.",
+        },
+    },
+    "agree.groups": {
+        "claim_type": "measured",
+        "placeholders": ["better", "worse", "rho_better", "rho_worse"],
+        "levels": {
+            "curious": "Agreement is stronger in $better than in $worse: Pearson $rho_better against $rho_worse.",
+            "student": "By layer group, agreement with the exact test is stronger for $better ($rho_better) than for $worse ($rho_worse).",
+            "expert": "Pearson by layer group: $better $rho_better vs $worse $rho_worse (groups differ by more than the declared threshold).",
+        },
+    },
+    "agree.methods": {
+        "claim_type": "caveat",
+        "placeholders": [],
+        "levels": {
+            "curious": "Each test asks a different question. Exact {{term:patching|patching}} copies one part at a time and reruns the model. Attribution patching uses a straight-line guess. The direct test reads the final scores. They can agree on the big parts and still disagree in the details.",
+            "student": "Method note: exact patching reruns the model with one component's clean activation; {{term:attribution_patching|attribution patching}} takes a first-order linear step from the corrupted run; {{term:direct_contribution|DLA}} reads only the final write into the score. They answer different questions, so agreement is evidence about the scores, not about one shared mechanism.",
+            "expert": "Metrics are not interchangeable: exact Rec_D is a rerun effect; Rec_AtP is a gradient approximation at the corrupted point; DLA is a linear read of the final residual. Correlation across heads is expected to be positive but need not be 1, especially where attention changes nonlinearly.",
+        },
+    },
     # ---- limits (fixed caveats) -----------------------------------------------------
     "limits.one_prompt": {
         "claim_type": "caveat",

@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import pathlib
 
+from ..analysis.agreement import compute_agreement, exact_head_vs_sweep
 from ..analysis.dla import compute_dla
 from ..analysis.lens import compute_logit_lens
 from ..explain import lint as explain_lint
@@ -131,6 +132,7 @@ SECTION_TITLES = {
     "where_formed": "Where does the answer form?",
     "which_words": "Which words matter?",
     "which_parts": "Which parts of the model matter?",
+    "methods_agree": "Do the three methods agree?",
     "vs_paper": "How does this compare with the published circuit?",
     "how_sure": "How sure can we be?",
     "limits": "What this does not show",
@@ -141,6 +143,7 @@ SECTION_QUESTIONS = {
     "where_formed": "After which block does the score gap grow the most?",
     "which_words": "Which input words restore the answer when patched, early vs late in the model?",
     "which_parts": "Which attention heads restore the answer (patching), and which push it directly (DLA)?",
+    "methods_agree": "Do exact patching, attribution patching and direct logit attribution rank the same components?",
     "vs_paper": "How do our top heads line up with the published IOI circuit groups?",
     "how_sure": "What do many prompts say beyond this one example?",
     "limits": "What was measured, and what was deliberately not claimed?",
@@ -407,6 +410,81 @@ def build_sections(cfg: dict, steps: dict) -> list[dict]:
         }
     )
 
+    # ---- methods_agree (exact vs AtP vs DLA) ------------------------------------
+    agreement = steps.get("agreement")
+    agreement_compact = explain_story.compact_agreement(agreement) if agreement else None
+    agree_data = agreement_compact or {}
+    agree_checks = []
+    if agreement_compact:
+        gate = exact_head_vs_sweep(agreement_compact.get("exact_heads") or [], head_sweep)
+        agree_checks.append(
+            _check(
+                "agreement_exact_vs_head_sweep",
+                "exact agreement values equal the report's layer x head sweep",
+                gate.get("max_abs_diff"),
+                gate.get("tolerance"),
+                bool(gate.get("ok")),
+                "max |difference| <= tolerance for all 144 heads",
+            )
+        )
+        rec_a = agreement_compact.get("dla_reconciliation") or {}
+        if rec_a.get("abs_error") is not None:
+            agree_checks.append(
+                _check(
+                    "agreement_dla_reconciliation",
+                    "the agreement run's DLA terms sum to its real D",
+                    round(rec_a["abs_error"], 8),
+                    rec_a.get("tolerance"),
+                    bool(rec_a.get("ok")),
+                    "abs error <= tolerance",
+                )
+            )
+        if (agreement_compact.get("baselines") or {}).get("denominator") is not None:
+            agree_checks.append(
+                _baseline_contrast_check({"baselines": agreement_compact["baselines"]})
+            )
+    stats = (agreement_compact or {}).get("stats") or {}
+    agree_against = [
+        {
+            "label": "D_clean (agreement run)",
+            "value": (agreement_compact or {}).get("baselines", {}).get("D_clean"),
+        },
+        {
+            "label": "D_corrupted (agreement run)",
+            "value": (agreement_compact or {}).get("baselines", {}).get("D_corrupted"),
+        },
+        {
+            "label": "exact vs AtP Pearson (heads)",
+            "value": (stats.get("atp") or {}).get("pearson_heads"),
+        },
+        {
+            "label": "exact vs DLA Pearson (heads)",
+            "value": (stats.get("dla") or {}).get("pearson_heads"),
+        },
+    ]
+    sections.append(
+        {
+            "id": "methods_agree",
+            "title": SECTION_TITLES["methods_agree"],
+            "question": SECTION_QUESTIONS["methods_agree"],
+            "claims": explain_story.story_agreement_methods(agreement_compact),
+            "data": agree_data,
+            "evidence_tier": live_tier,
+            "analogy": None,
+            "trust": {
+                "measured": "Three score vectors for all 156 components on this pair: exact denoising reruns, attribution patching (a first-order approximation), and direct logit attribution on the clean prompt.",
+                "against": agree_against,
+                "checks": agree_checks,
+                "warnings": [],
+                "not_shown": [
+                    "Agreement between scores does not show the three methods measure one shared mechanism.",
+                    "The comparison uses one prompt pair and the pair's own corruption.",
+                    "DLA ignores effects that pass through later blocks; exact patching includes them.",
+                ],
+            },
+        }
+    )
+
     # ---- vs_paper ---------------------------------------------------------------
     top10 = explain_story.top10_by_recovery(head_sweep) if head_sweep.get("recovery") else []
     if reference and reference.get("groups"):
@@ -589,17 +667,28 @@ def run_report(cfg: dict, ctx: JobContext) -> dict:
         compute_dla(norm["clean_text"], norm["candidate_a"], norm["candidate_b"])
     )
 
-    ctx.report(0.85, "loading study")
+    ctx.report(0.82, "agreement: exact vs attribution patching vs DLA")
+    agreement = compute_agreement(
+        norm["clean_text"],
+        norm["corrupted_text"],
+        norm["candidate_a"],
+        norm["candidate_b"],
+        progress=_PhaseCtx(ctx, 0.82, 0.10).report,
+        check_cancel=ctx.check_cancel,
+    )
+
+    ctx.report(0.94, "loading study")
     study = _load_study(norm)
     reference = explain_story.compact_reference(_load_reference())
 
-    ctx.report(0.92, "writing the report")
+    ctx.report(0.96, "writing the report")
     steps = {
         "prediction": pred,
         "lens": lens,
         "position_sweep": pos_sweep,
         "head_sweep": head_sweep,
         "dla": dla,
+        "agreement": agreement,
         "reference": reference,
         "study": study,
     }
@@ -738,6 +827,25 @@ def _section_table(s: dict) -> list[str]:
             rows.append((f"recovery rank {e['rank']}", f"head {e['label']} · {fmt_num(e['recovery'], 2)}"))
         for e in data.get("top_dla") or []:
             rows.append((f"DLA rank {e['rank']}", f"head {e['label']} · {fmt_num(e['value'], 2)}"))
+    elif sid == "methods_agree" and data.get("stats"):
+        a = data
+        stats = a.get("stats") or {}
+        for method, label in (("atp", "attribution patching"), ("dla", "direct logit attribution")):
+            block = stats.get(method) or {}
+            add(f"{label}: Pearson over 144 heads", block.get("pearson_heads"), 3)
+            add(f"{label}: Spearman over 144 heads", block.get("spearman_heads"), 3)
+            add(
+                f"{label}: top-10 overlap with exact (random {fmt_num(block.get('expected_random_top10'), 1)})",
+                block.get("top10_overlap"),
+                0,
+            )
+            groups = block.get("pearson_groups") or {}
+            for group, glabel in (("blocks_0_5", "blocks 0-5"), ("blocks_6_11", "blocks 6-11")):
+                add(f"{label}: Pearson {glabel}", (groups.get(group) or {}).get("pearson"), 3)
+        for i, entry in enumerate((a.get("top10") or {}).get("exact") or []):
+            if i >= 3:
+                break
+            rows.append((f"exact top-10 rank {entry['rank']}", f"head {entry['label']} · {fmt_num(entry['value'], 2)}"))
     elif sid == "vs_paper" and data.get("top10"):
         for e in data["top10"]:
             rows.append((f"top-10 rank {e['rank']}", f"head {e['label']} · recovery {fmt_num(e['recovery'], 2)} · groups: {', '.join(e.get('groups') or []) or 'none'}"))

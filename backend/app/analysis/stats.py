@@ -44,6 +44,20 @@ def _pearson(r: np.ndarray, s: np.ndarray) -> float:
     return float((rc * sc).sum() / denom)
 
 
+def pearson(x, y) -> float | None:
+    """Pearson correlation. Returns None when either input is constant
+    (correlation undefined) or the inputs are empty — never NaN."""
+    a = np.asarray(x, dtype=float)
+    b = np.asarray(y, dtype=float)
+    if a.ndim != 1 or b.ndim != 1 or a.shape != b.shape:
+        raise ValueError("pearson expects two 1-D arrays of the same length")
+    if a.size == 0:
+        return None
+    if float((a == a[0]).all()) or float((b == b[0]).all()):
+        return None
+    return _pearson(a, b)
+
+
 def spearman(x, y) -> float | None:
     """Spearman rank correlation (average ranks). Returns None when either
     input is constant (correlation undefined) — never NaN."""
