@@ -2,7 +2,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from backend.app.model_runtime.loader import ADAPTER  # noqa: E402
@@ -34,3 +33,34 @@ def ioi():
         "s2_position": 9,
         "end_position": 13,
     }
+
+
+# Stage 6 A3: every test whose fixture closure needs the real model is tagged
+# with the `model` marker (registered in pytest.ini), so CI can run
+# `pytest -m "not model"` as a fast job. Fixture-based tagging means existing
+# tests are untouched: `bridge`/`ioi` are the model fixtures, and the per-file
+# `client`/job fixtures depend on `bridge`, which `item.fixturenames` (the
+# transitive closure) already includes.
+#
+# Two honest exceptions that request no model fixture but still need the model
+# environment (found by running the fast subset):
+# - test_study.py: its fixture-less tests (exclusion rule, determinism, worker
+#   rejection) read the completed studies that only the module's own model
+#   tests leave in RUNNER — the module only makes sense as one model-marked
+#   unit.
+# - test_provenance.py::test_collect_has_all_keys asserts a real 40-hex HF
+#   model revision, which requires the downloaded weights to be cached.
+_MODEL_FIXTURES = {"bridge", "ioi"}
+_MODEL_MODULES = {"test_study"}
+_MODEL_SINGLE_TESTS = {"test_provenance.py::test_collect_has_all_keys"}
+
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        module = Path(str(item.fspath)).stem
+        if (
+            _MODEL_FIXTURES.intersection(item.fixturenames)
+            or module in _MODEL_MODULES
+            or any(item.nodeid.endswith(t) for t in _MODEL_SINGLE_TESTS)
+        ):
+            item.add_marker(pytest.mark.model)

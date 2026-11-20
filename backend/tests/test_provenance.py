@@ -69,6 +69,40 @@ def test_git_failure_is_swallowed(monkeypatch):
         provenance._clear_static_cache()  # repopulate truthfully for later tests
 
 
+class _FakeCompleted:
+    def __init__(self, returncode: int = 0, stdout: str = "") -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+
+
+def test_git_commit_is_not_cached(monkeypatch):
+    """A changed HEAD must show up in the next collect() call (no stale hash
+    for the life of the process). Static fields stay cached and identical."""
+
+    calls = {"n": 0}
+
+    def fake_run(args, **kwargs):
+        argv = list(args)
+        if "rev-parse" in argv:
+            calls["n"] += 1
+            short = "aaaaaaa1" if calls["n"] == 1 else "bbbbbbb2"
+            return _FakeCompleted(0, short + "\n")
+        if "status" in argv:
+            return _FakeCompleted(0, "")  # clean tree both times
+        return _FakeCompleted(1, "")
+
+    monkeypatch.setattr(provenance.subprocess, "run", fake_run)
+    p1 = provenance.collect()
+    p2 = provenance.collect()
+    assert p1["git_commit"] == "aaaaaaa1"
+    assert p2["git_commit"] == "bbbbbbb2"
+    assert p1["git_commit"] != p2["git_commit"]
+    # the genuinely static fields are still cached (identical between calls)
+    assert p1["model_id"] == p2["model_id"]
+    assert p1["model_revision"] == p2["model_revision"]
+    assert p1["versions"] == p2["versions"]
+
+
 def test_api_experiment_provenance_old_and_new_keys(client):
     r = client.post("/api/experiments", json=IOI_CFG)
     assert r.status_code == 200

@@ -62,9 +62,15 @@ class ModelAdapter:
     def metadata(self) -> dict:
         bridge = self.ensure_loaded()
         cfg = bridge.cfg
+        # Real HF commit hash of the loaded weights (40 hex), via provenance's
+        # resolution order (bridge config → tokenizer → local cache). Lazy
+        # import: provenance imports this module's ADAPTER singleton.
+        from ..provenance import _model_revision
+
         return {
             "model_id": MODEL_ID,
             "revision": getattr(bridge.tokenizer, "name_or_path", MODEL_ID),
+            "revision_hash": _model_revision(),
             "device": self._device,
             "dtype": str(next(bridge.parameters()).dtype),
             "n_layers": cfg.n_layers,

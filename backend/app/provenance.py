@@ -2,9 +2,10 @@
 
 collect() returns a dict describing exactly what ran: model identity + real
 Hugging Face revision, device/dtype, library versions, git state, UTC timestamp.
-Everything except timestamp_utc is cached (git and metadata lookups are slow);
-the timestamp is per-call. Model loading is never triggered here — callers run
-collect() after the model is already loaded.
+Everything except timestamp_utc and git_commit is cached (git and metadata
+lookups are slow, but a long-running server must not report a stale HEAD, so
+git_commit is computed fresh on every call). Model loading is never triggered
+here — callers run collect() after the model is already loaded.
 """
 
 from __future__ import annotations
@@ -136,7 +137,6 @@ def _static() -> dict:
             "transformers": _version("transformers"),
             "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
         },
-        "git_commit": _git_commit(),
     }
     if ADAPTER.is_loaded:
         _STATIC_CACHE = static
@@ -149,8 +149,13 @@ def _clear_static_cache() -> None:
 
 
 def collect() -> dict:
-    """Provenance for one record; safe to call after the model is loaded."""
+    """Provenance for one record; safe to call after the model is loaded.
+
+    git_commit is computed per call so a long-running server reports the
+    commit it is actually running on, not the one from process start.
+    """
     out = dict(_static())
+    out["git_commit"] = _git_commit()
     out["timestamp_utc"] = (
         datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
     )

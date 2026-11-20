@@ -26,6 +26,19 @@ def test_health(client):
     assert body["model"]["n_layers"] == 12
 
 
+def test_health_revision_hash_is_40_hex(client):
+    """Stage 6 A1: metadata() exposes the real model revision as revision_hash,
+    additively; the legacy `revision` (tokenizer name/path) is unchanged."""
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    model = r.json()["model"]
+    assert model["revision"] == "gpt2"  # legacy field, unchanged for old clients
+    h = model["revision_hash"]
+    assert isinstance(h, str)
+    assert len(h) == 40
+    assert all(c in "0123456789abcdef" for c in h)
+
+
 def test_models(client):
     r = client.get("/api/models")
     assert r.status_code == 200
