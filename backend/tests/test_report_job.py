@@ -406,3 +406,16 @@ def test_study_sensitivity_claim_reports_metric_and_ablation_overlap(study_repor
     # fixture matrix: off-diagonal overlaps are 7 of 10
     assert "7 of 10" in curious["study.sensitivity"]
     assert "does not stay the same" in curious["study.sensitivity"]
+
+
+def test_methods_agree_claims_name_their_method_and_table_has_no_doubled_word(report_job):
+    """Review regressions: the layer-group sentence must say WHICH method it is
+    about, and the exact top-10 table rows must not read 'head head 8.10'."""
+    sec = next(s for s in report_job.results["sections"] if s["id"] == "methods_agree")
+    group_claims = [c for c in sec["claims"] if c["level"] == "curious" and c["id"].startswith("agree.groups")]
+    for c in group_claims:
+        assert "the fast method" in c["text"] or "the direct test" in c["text"], c["text"]
+    from backend.app.experiments.report import export_markdown
+
+    md = export_markdown(report_job.results, "curious")
+    assert "head head" not in md

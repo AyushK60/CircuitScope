@@ -365,11 +365,11 @@ TEMPLATES: dict[str, dict] = {
     },
     "agree.groups": {
         "claim_type": "measured",
-        "placeholders": ["better", "worse", "rho_better", "rho_worse"],
+        "placeholders": ["method_label", "better", "worse", "rho_better", "rho_worse"],
         "levels": {
-            "curious": "Agreement is stronger in $better than in $worse: Pearson $rho_better against $rho_worse.",
-            "student": "By layer group, agreement with the exact test is stronger for $better ($rho_better) than for $worse ($rho_worse).",
-            "expert": "Pearson by layer group: $better $rho_better vs $worse $rho_worse (groups differ by more than the declared threshold).",
+            "curious": "For $method_label, agreement is stronger in $better than in $worse: Pearson $rho_better against $rho_worse.",
+            "student": "By layer group, agreement of $method_label with the exact test is stronger for $better ($rho_better) than for $worse ($rho_worse).",
+            "expert": "Pearson by layer group for $method_label: $better $rho_better vs $worse $rho_worse (groups differ by more than the declared threshold).",
         },
     },
     "agree.methods": {

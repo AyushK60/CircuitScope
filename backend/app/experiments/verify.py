@@ -304,10 +304,17 @@ def validate_verify_config(cfg: dict) -> dict:
 
 
 def script_sha256(relative_path: str) -> str | None:
+    """SHA-256 of the script with line endings normalised to LF.
+
+    Git on Windows (core.autocrlf) rewrites LF to CRLF on checkout. Hashing raw
+    bytes would mark an unchanged script "stale" after every checkout, so the
+    status would cry wolf; only a real content change should change the hash.
+    """
     try:
-        return hashlib.sha256((REPO_ROOT / relative_path).read_bytes()).hexdigest()
+        data = (REPO_ROOT / relative_path).read_bytes()
     except OSError:
         return None
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _tail(text: str, lines: int = TAIL_LINES) -> str:

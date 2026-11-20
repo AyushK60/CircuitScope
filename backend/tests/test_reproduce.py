@@ -364,3 +364,34 @@ def test_reproduce_dla_and_lens_are_computed_at_request_time(client):
     )
     assert lens.status_code == 200, lens.text
     assert "lens" in lens.text
+
+
+# ---------------------------------------------------------------------------
+# Stage 5 review regression: hostile provenance cannot escape the header comment
+# ---------------------------------------------------------------------------
+
+
+def test_header_comment_cannot_be_escaped_by_provenance_strings():
+    import importlib
+
+    gen = importlib.import_module("backend.app.reproduce.generate")  # the package re-exports a function named generate
+
+    hostile = "abc" + chr(10) + "import os; os.system('echo HACKED')" + chr(13) + chr(10) + "__import__('os')"
+    versions = {"torch": hostile, "transformers": "1" + chr(10) + "2"}
+    safe = gen._provenance_defaults({"model_revision": hostile, "versions": versions})
+    for value in (safe["model_revision"], safe["versions"]["torch"], safe["versions"]["transformers"]):
+        assert chr(10) not in value and chr(13) not in value and len(value) <= 64
+    # a real 40-hex revision survives unchanged (the script pins to it)
+    rev = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
+    assert gen._provenance_defaults({"model_revision": rev})["model_revision"] == rev
+    header = gen._header(
+        "dla",
+        {"model_revision": hostile, "versions": versions, "tolerances": {"dla": 2e-3}},
+        "sample",
+    )
+    # the whole header must be comments only: it parses to an empty module
+    import ast as _ast
+
+    assert _ast.parse(header).body == []
+    for line in header.splitlines():
+        assert line == "" or line.startswith("#"), line

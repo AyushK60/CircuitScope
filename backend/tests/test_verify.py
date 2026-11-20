@@ -226,3 +226,21 @@ def test_real_patch_check_passes_and_cleans_temp(bridge):
     assert result["git_commit"]
     assert not (verify.TEMP_ROOT / "realpatch01").exists()
     print(f"\npatch verify: max_diff={result['max_diff']} elapsed={result['elapsed_seconds']}s")
+
+
+# ---------------------------------------------------------------------------
+# Stage 5 review regression: staleness must not depend on line endings
+# ---------------------------------------------------------------------------
+
+
+def test_script_sha256_ignores_crlf_conversion(tmp_path, monkeypatch):
+    """git on Windows (core.autocrlf) rewrites LF to CRLF on checkout; an
+    unchanged script must keep the same hash, a real edit must not."""
+    monkeypatch.setattr(verify, "REPO_ROOT", tmp_path)
+    p = tmp_path / "s.py"
+    p.write_bytes(b"print('a')\nprint('b')\n")
+    lf = verify.script_sha256("s.py")
+    p.write_bytes(b"print('a')\r\nprint('b')\r\n")
+    assert verify.script_sha256("s.py") == lf
+    p.write_bytes(b"print('a')\nprint('c')\n")
+    assert verify.script_sha256("s.py") != lf

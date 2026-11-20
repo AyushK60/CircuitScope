@@ -16,7 +16,9 @@ export default defineConfig({
   workers: 1,
   webServer: [
     {
-      command: ".venv\\Scripts\\python -m backend.app.main",
+      // A dedicated e2e database: test runs must never write into the user's
+      // real outputs/experiments.db (an already-running backend is still reused).
+      command: ".venv\\Scripts\\python -m backend.app.main --db outputs/e2e_experiments.db",
       cwd: "..",
       url: "http://127.0.0.1:8000/api/health",
       reuseExistingServer: true,

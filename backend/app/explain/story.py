@@ -637,6 +637,7 @@ def story_agreement_methods(data: dict | None) -> list[dict]:
             claims += _mk(
                 "agree.groups",
                 {
+                    "method_label": {"atp": "the fast method", "dla": "the direct test"}.get(method, method),
                     "better": better,
                     "worse": worse,
                     "rho_better": fmt_num(rho_b, 3),

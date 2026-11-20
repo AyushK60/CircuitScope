@@ -845,7 +845,7 @@ def _section_table(s: dict) -> list[str]:
         for i, entry in enumerate((a.get("top10") or {}).get("exact") or []):
             if i >= 3:
                 break
-            rows.append((f"exact top-10 rank {entry['rank']}", f"head {entry['label']} · {fmt_num(entry['value'], 2)}"))
+            rows.append((f"exact top-10 rank {entry['rank']}", f"{entry['label']} · {fmt_num(entry['value'], 2)}"))
     elif sid == "vs_paper" and data.get("top10"):
         for e in data["top10"]:
             rows.append((f"top-10 rank {e['rank']}", f"head {e['label']} · recovery {fmt_num(e['recovery'], 2)} · groups: {', '.join(e.get('groups') or []) or 'none'}"))

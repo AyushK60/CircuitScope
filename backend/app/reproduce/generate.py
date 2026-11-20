@@ -66,14 +66,29 @@ def filename(kind: str, raw_id: str | None) -> str:
     return f"circuitscope_repro_{kind}_{safe_id(raw_id)}.py"
 
 
+_SAFE_CHARS = re.compile(r"[^0-9A-Za-z._+\-]")
+
+
+def _safe_label(value: object) -> str:
+    """Reduce a provenance string to a short, comment-safe token.
+
+    These values are printed into the script's header COMMENT. They come from
+    server-side provenance today, but a newline in one would end the comment
+    and start code, so anything outside a conservative character set is
+    replaced and the length is capped (defence in depth, tested).
+    """
+    text = _SAFE_CHARS.sub("?", str(value))
+    return text[:64] if text else "unknown"
+
+
 def _provenance_defaults(provenance: dict | None) -> dict:
     prov = provenance or {}
     versions = prov.get("versions") or {}
     return {
-        "model_revision": prov.get("model_revision", "unknown"),
+        "model_revision": _safe_label(prov.get("model_revision", "unknown")),
         "versions": {
-            "torch": versions.get("torch", "unknown"),
-            "transformers": versions.get("transformers", "unknown"),
+            "torch": _safe_label(versions.get("torch", "unknown")),
+            "transformers": _safe_label(versions.get("transformers", "unknown")),
         },
     }
 
