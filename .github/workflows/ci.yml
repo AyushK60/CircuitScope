@@ -8,7 +8,8 @@
 #
 # Jobs:
 # - frontend:      lint + unit tests + production build (every push/PR)
-# - backend-fast:  pytest -m "not model" + link check (every push/PR)
+# - backend-fast:  pytest -m "not model" + link check + claims-ledger check
+#                  (every push/PR)
 # - backend-model: full pytest incl. the real-model tests; needs the GPT-2
 #                  download, so it runs on workflow_dispatch and the weekly
 #                  schedule only
@@ -85,6 +86,8 @@ jobs:
         run: pytest backend/tests -m "not model" -q
       - name: Check documentation links
         run: python scripts/check_links.py
+      - name: Check the claims ledger against the stored results
+        run: python scripts/check_claims.py
 
   backend-model:
     name: backend full tests (real model)
