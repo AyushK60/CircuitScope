@@ -158,22 +158,26 @@ describe("VerificationCard statuses", () => {
     expect(screen.getByRole("button", { name: "Run this check" })).toBeTruthy();
   });
 
-  it("says 'Pass' with the icon and the max difference", () => {
+  it("says 'Pass' on the stamp, with the max difference and how far inside the limit it is", () => {
     renderCard(entry({ status: "pass", ok: true, result: passResult }));
     const status = screen.getByRole("status", { name: "Status: Pass" });
-    expect(status.textContent).toContain("✓");
+    expect(status.textContent).toBe("Pass");
     expect(screen.getByText("1.500e-6")).toBeTruthy();
     expect(screen.getByText("deadbee")).toBeTruthy();
+    expect(screen.getByText("1.5e-6", { exact: false })).toBeTruthy();
+    expect(screen.getByText(/inside the limit/)).toBeTruthy();
   });
 
-  it("says 'Fail' with the cross icon", () => {
+  it("says 'Fail' and flags a gap over the limit", () => {
     renderCard(entry({ status: "fail", ok: false, result: { ...passResult, ok: false, max_diff: 0.5 } as never }));
-    expect(screen.getByRole("status", { name: "Status: Fail" }).textContent).toContain("✕");
+    expect(screen.getByRole("status", { name: "Status: Fail" }).textContent).toBe("Fail");
+    expect(screen.getByText(/over the limit/)).toBeTruthy();
   });
 
   it("marks a result stale when the script changed, even if it passed before", () => {
     renderCard(entry({ status: "pass", ok: true, stale: true, result: passResult }));
-    expect(screen.getByRole("status", { name: "Status: Stale result" }).textContent).toContain("↻");
+    expect(screen.getByRole("status", { name: "Status: Stale result" }).textContent).toBe("Stale");
+    expect(screen.getByText(/script changed after this result was recorded/)).toBeTruthy();
   });
 
   it("explains that the manual feedforward check needs a browser", () => {

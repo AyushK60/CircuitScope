@@ -21,16 +21,18 @@ test.describe("Sweeps page", () => {
 
     // defaults: task select = ioi_john_mary (first task), mode = layer_position
     await expect(page.getByLabel("Task")).toHaveValue("ioi_john_mary");
-    await expect(page.getByLabel("Mode")).toHaveValue("layer_position");
+    const modes = page.getByRole("group", { name: "Sweep mode" });
+    await expect(modes.getByRole("button", { name: "layer × position" })).toHaveClass(/active/);
 
-    await page.getByRole("button", { name: "Run sweep" }).click();
-
-    // 168 real patched runs take several seconds on CPU; Cancel becomes
-    // enabled while the job runs, and the heatmap appears on completion.
-    await expect(page.getByRole("button", { name: "Cancel" })).toBeEnabled({ timeout: 10_000 });
+    // The sweep starts by itself: 168 real patched runs take several seconds on CPU and the
+    // heatmap appears on completion.
     const heatmap = page.getByRole("img", { name: /Patching sweep heatmap, 12 rows \(blocks\) by 14 columns/ });
     await expect(heatmap).toBeVisible({ timeout: 120_000 });
-    await expect(page.getByRole("button", { name: "Cancel" })).toBeDisabled();
+
+    // "Run again" starts a second one; Cancel is available while it runs
+    await page.locator("section#sw-patch").getByRole("button", { name: "Run again" }).click();
+    await expect(page.getByRole("button", { name: "Cancel" }).first()).toBeEnabled({ timeout: 10_000 });
+    await expect(heatmap).toBeVisible({ timeout: 120_000 });
 
     // baselines and the fixed patching direction are shown
     await expect(page.getByText("D_clean")).toBeVisible();
@@ -44,12 +46,13 @@ test.describe("Sweeps page", () => {
     const row11 = page.locator("table.sweep-numbers tbody tr").filter({ hasText: "block 11" });
     await expect(row11.locator("td").last()).toHaveText("1.000");
 
-    // DLA section: run both prompts; each shows the reconciliation line ok
-    await page.getByRole("button", { name: "Run DLA (clean prompt)" }).click();
+    // DLA step: runs by itself when scrolled into view; pick both prompts, each shows the reconciliation line ok
+    await page.locator("section#sw-push").scrollIntoViewIfNeeded();
     await expect(page.getByText(/Components sum to/).first()).toBeVisible({ timeout: 60_000 });
+    await expect(page.getByText(/clean prompt · D =/)).toBeVisible();
+    await page.getByRole("button", { name: "corrupted prompt" }).click();
+    await expect(page.getByText(/corrupted prompt · D =/)).toBeVisible({ timeout: 60_000 });
     await expect(page.locator(".state-banner.ok").filter({ hasText: "Components sum to" })).toHaveCount(1, { timeout: 10_000 });
-    await page.getByRole("button", { name: "Run DLA (corrupted prompt)" }).click();
-    await expect(page.locator(".state-banner.ok").filter({ hasText: "Components sum to" })).toHaveCount(2, { timeout: 60_000 });
     // the direct-effect-only caveat is displayed
     await expect(page.getByText(/Direct effect only/).first()).toBeVisible();
 

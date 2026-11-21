@@ -17,17 +17,17 @@ test.describe("CircuitScope core journey", () => {
   test("landing shows live model status and real prediction", async ({ page }) => {
     await page.goto("/");
     await expect(page.getByRole("status")).toContainText("GPT-2 ready", { timeout: 30_000 });
-    // auto demo runs when model is ready
-    await expect(page.getByText("Tokens the model receives")).toBeVisible();
-    await expect(page.getByText("<|endoftext|>").first()).toBeVisible();
+    // the hero runs the example sentence once the model is ready
+    await expect(page.getByText("MEASURED · LIVE")).toBeVisible({ timeout: 30_000 });
     // measured probability appears (Mary is top for the preset example)
     await expect(page.getByText("66.2").first()).toBeVisible({ timeout: 30_000 });
-    // hero schematic is labeled as structure, not telemetry
-    await expect(page.getByText(/SCHEMATIC/).first()).toBeVisible();
+    // removing a word re-runs the model
+    await page.getByRole("button", { name: /Hide the word John/ }).last().click();
+    await expect(page.getByText(/Without “John” the model's top word is/)).toBeVisible({ timeout: 30_000 });
   });
 
   test("explorer: model → block → attention anatomy → head heatmap", async ({ page }) => {
-    await page.goto("/#/explorer");
+    await page.goto("/#/explorer?mode=map");
     await expect(page.getByText("gpt2 · 12 blocks · 12 heads")).toBeVisible({ timeout: 30_000 });
     // drill into block 5 on the canvas
     await page.getByRole("button", { name: "Open transformer block 5" }).click();
@@ -91,34 +91,38 @@ test.describe("CircuitScope core journey", () => {
     expect(overflow).toBeLessThanOrEqual(2);
     // explorer (fixed-width SVG diagrams) must also fit
     await page.goto("/#/explorer");
-    await expect(page.getByText("Measured residual stream")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Stage 1 of 16", { exact: true })).toBeVisible({ timeout: 30_000 });
     const overflowExplorer = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflowExplorer).toBeLessThanOrEqual(2);
+    await page.getByRole("tab", { name: "Full map" }).click();
+    await expect(page.getByText("Measured residual stream")).toBeVisible({ timeout: 30_000 });
+    const overflowMap = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflowMap).toBeLessThanOrEqual(2);
   });
 
-  test("flow playback: guided replay with recorded stages and honest timing", async ({ page }) => {
+  test("guided tour: stages replay recorded data with honest pacing", async ({ page }) => {
     await page.goto("/#/explorer");
-    await page.getByRole("tab", { name: "Computation Flow" }).click();
-    await page.getByRole("button", { name: "▶ Play" }).click();
+    await page.getByRole("button", { name: "▶ Play the walk" }).click();
     // playback advances through real block stages showing measured heatmaps
-    await expect(page.getByRole("heading", { name: /Transformer block/ })).toBeVisible({
+    await expect(page.getByRole("heading", { name: /Block 0: read, think, write back/ })).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.getByText(/blocks\.0\.attn\.hook_pattern/).first()).toBeVisible();
-    // honest timing label is always present
-    await expect(page.getByText(/not measured GPU time/)).toBeVisible();
+    // honest pacing label is always present
+    await expect(page.getByText(/not GPU timing/)).toBeVisible();
     // step controls work
-    await page.getByRole("button", { name: "Step forward" }).click();
-    // jumping to the final stage shows the completed-run state
-    await page.getByRole("tab", { name: "logits" }).click();
-    await expect(page.getByText(/Completed run/)).toBeVisible({ timeout: 10_000 });
-    await expect(page.getByRole("heading", { name: "Stage · Output scores" })).toBeVisible();
+    await page.getByRole("button", { name: "Next stage" }).click();
+    // jumping to the final stage shows the answer
+    await page.getByRole("tab", { name: "Answer" }).click();
+    await expect(page.getByRole("heading", { name: "The answer: a score for every word" })).toBeVisible();
   });
 
-  test("anatomy data view: measured residual norms across all blocks", async ({ page }) => {
-    await page.goto("/#/explorer");
+  test("full map data view: measured residual norms across all blocks", async ({ page }) => {
+    await page.goto("/#/explorer?mode=map");
     await expect(page.getByText("Measured residual stream")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("STRUCTURE + MEASURED")).toBeVisible();
     for (let l = 0; l < 12; l++) {
@@ -144,6 +148,7 @@ test.describe("CircuitScope core journey", () => {
 
   test("playground: greedy continuation generates real text", async ({ page }) => {
     await page.goto("/#/playground");
+    await page.getByRole("tab", { name: "Predict & continue" }).click();
     await expect(page.getByText(/GPT-2 Small predicts text continuations/)).toBeVisible({ timeout: 30_000 });
     await page.getByRole("button", { name: "Generate 5 tokens" }).click();
     await expect(page.getByText(/greedy \(argmax\)/)).toBeVisible({ timeout: 30_000 });
@@ -157,7 +162,7 @@ test.describe("CircuitScope core journey", () => {
   test("neural network lab: 4-6-6-5-3 network computes live", async ({ page }) => {
     await page.goto("/#/lab");
     await expect(page.getByRole("heading", { name: "Neural Network Lab" })).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText(/Educational Feedforward Network — separate from GPT-2 Small/)).toBeVisible();
+    await expect(page.getByText(/Separate from GPT-2\./)).toBeVisible();
     // exact connection count stated in the accessible description
     await expect(page.getByRole("img", { name: /105 connections/ })).toBeVisible();
     // moving an input changes the computed output probabilities

@@ -8,6 +8,31 @@ export const PRESET = {
   s2_position: 9,
 };
 
+/** Guided examples: each one only fills in the real controls. */
+export const EXAMPLES = [
+  {
+    id: "ramu",
+    label: "What comes next?",
+    clean: "Ramu was hungry. He went outside to buy",
+    corrupted: "Ramu was hungry. He went outside to buy",
+    candidates: [" food", " bread"],
+  },
+  {
+    id: "father",
+    label: "Who was sick?",
+    clean: "The father asked his son for water because the father was sick. The father was sick, so the",
+    corrupted: "The father asked his son for water because the father was sick. The father was sick, so the",
+    candidates: [" father", " son"],
+  },
+  {
+    id: "ioi",
+    label: "Activation patch",
+    clean: PRESET.clean,
+    corrupted: PRESET.corrupted,
+    candidates: [PRESET.candidate_a, PRESET.candidate_b],
+  },
+] as const;
+
 /** Patchable hooks offered — all verified in the backend allowlist
  *  (PATCHABLE_HOOKS). Generated so the UI can never desync from state. */
 export const HOOK_OPTIONS = [

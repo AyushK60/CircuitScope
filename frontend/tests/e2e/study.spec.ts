@@ -17,6 +17,7 @@ test.describe("Study page", () => {
     await expect(page.getByRole("status").first()).toContainText("GPT-2 ready", { timeout: 30_000 });
 
     // set the small study size and run
+    // (with no completed study yet, the run form is open by itself)
     await page.getByLabel("n_prompts (4–100)").fill("4");
     await page.getByLabel("seed").fill("21");
     await page.getByRole("button", { name: "Run study" }).click();
@@ -26,27 +27,34 @@ test.describe("Study page", () => {
 
     // on completion the headline numbers appear
     await expect(page.getByText("Model accuracy")).toBeVisible({ timeout: 840_000 });
-    await expect(page.getByText("Model accuracy")).toBeVisible();
 
     // headline: 4 prompts, exclusions reported
     await expect(page.getByText(/^Prompts$/)).toBeVisible();
     await expect(page.getByText(/excluded per condition: swap/)).toBeVisible();
 
-    // RQ1 table renders with methods and CI header (a second RQ1 table exists
-    // inside the closed <details> subset block, hence .first())
-    await expect(page.getByText("RQ1 — do the cheap methods agree with exact patching?")).toBeVisible();
+    // Finding 1: the agreement plot, with the full RQ1 table behind a disclosure
+    await expect(page.getByRole("heading", { name: "Do the cheap methods agree with exact patching?" })).toBeVisible();
+    await expect(page.getByRole("group", { name: /Agreement with exact patching/ })).toBeVisible();
+    await page.getByText("Show the full table (RQ1)").click();
     await expect(page.getByText("Mean rho (signed)").first()).toBeVisible();
     await expect(page.getByText(/AtP \(attribution patching\)/).first()).toBeVisible();
 
-    // top-10 heads per condition with badges
-    await expect(page.getByRole("heading", { name: "Top-10 heads per condition" })).toBeVisible();
+    // Finding 2: the head map, ranking and the full per-condition table
+    await page.getByRole("tab", { name: "Top heads" }).click();
+    await expect(page.getByRole("img", { name: /ten highest are outlined/ })).toBeVisible();
+    await page.getByText("Top-10 heads per condition (full table)").click();
+    await expect(page.getByText(/Top-10 heads per condition by prompt-averaged signed score/)).toBeVisible();
 
-    // overlap matrices with the random expectation
+    // Finding 3: overlap grid with the random expectation, plus both full tables
+    await page.getByRole("tab", { name: "Stability" }).click();
+    await expect(page.getByText(/Shuffled rankings would share about 0.69 of 10/)).toBeVisible();
+    await page.getByText("Show both overlap tables").click();
     await expect(page.getByText(/Top-5 head overlap/)).toBeVisible();
     await expect(page.getByText(/Random expectation k·k\/144 = 0.17 for k=5/)).toBeVisible();
     await expect(page.getByText(/Random expectation k·k\/144 = 0.69 for k=10/)).toBeVisible();
 
     // caveats panel with the fixed texts
+    await page.getByRole("tab", { name: "Limits" }).click();
     await expect(page.getByText(/Attribution patching \(AtP\) is a first-order approximation/)).toBeVisible();
     await expect(page.getByText(/DLA measures direct effects only/)).toBeVisible();
     await expect(page.getByText(/Denoising and ablation answer different questions/)).toBeVisible();

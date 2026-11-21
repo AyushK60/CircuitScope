@@ -32,7 +32,7 @@ export default function ContinuationPanel({
   runContinuation: (nTokens: number) => void;
 }) {
   return (
-    <div className="panel">
+    <div className="pg-card">
       <h2>Custom prediction & continuation</h2>
       <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
         Predict & Continue: the real model appends tokens to the prompt, re-running on the growing

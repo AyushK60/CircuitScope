@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { api, type Health } from "./api/client";
 import Landing from "./pages/Landing";
 import Explorer from "./pages/Explorer";
@@ -10,30 +10,10 @@ import Study from "./pages/Study";
 import Report from "./pages/Report";
 import Verify from "./pages/Verify";
 import Tour from "./pages/Tour";
+import SiteNav from "./components/SiteNav";
+import { ROUTE_NAMES, type Route } from "./nav";
 
-type Route =
-  | "landing"
-  | "explorer"
-  | "playground"
-  | "learn"
-  | "lab"
-  | "sweeps"
-  | "study"
-  | "report"
-  | "verify"
-  | "tour";
-
-const ROUTE_NAMES: Route[] = [
-  "explorer",
-  "lab",
-  "playground",
-  "learn",
-  "sweeps",
-  "study",
-  "report",
-  "verify",
-  "tour",
-];
+const JOURNAL_ROUTES: Route[] = ["landing", "explorer", "sweeps", "report", "verify", "study", "learn", "lab", "playground", "tour"];
 
 function currentRoute(): Route {
   const h = window.location.hash.replace("#/", "").split("?")[0];
@@ -68,6 +48,11 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  /* redesigned pages use the light "journal" theme; the others stay dark until their turn */
+  useLayoutEffect(() => {
+    document.documentElement.dataset.theme = JOURNAL_ROUTES.includes(route) ? "journal" : "dark";
+  }, [route]);
+
   const navigate = (r: Route) => {
     window.location.hash = r === "landing" ? "/" : `/${r}`;
     setRoute(r);
@@ -81,56 +66,7 @@ export default function App() {
 
   return (
     <>
-      <header className="site-header">
-        <a
-          className="wordmark"
-          href="#/"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("landing");
-          }}
-        >
-          <span className="scope">⊙</span> CircuitScope
-        </a>
-        <nav className="nav" aria-label="Main">
-          {ROUTE_NAMES.map((r) => (
-            <a
-              key={r}
-              href={`#/${r}`}
-              className={route === r ? "active" : ""}
-              onClick={(e) => {
-                e.preventDefault();
-                navigate(r);
-              }}
-            >
-              {r === "explorer"
-                ? "Model Explorer"
-                : r === "playground"
-                  ? "Intervention Playground"
-                  : r === "lab"
-                    ? "NN Lab"
-                    : r === "sweeps"
-                      ? "Sweeps"
-                      : r === "study"
-                        ? "Study"
-                        : r === "report"
-                          ? "Report"
-                          : r === "verify"
-                            ? "Verify"
-                            : r === "tour"
-                              ? "Tour"
-                              : "Learn"}
-            </a>
-          ))}
-        </nav>
-        <button className="ghost" onClick={refreshHealth} title="Refresh backend status">
-          ⟳
-        </button>
-        <div className="model-status-chip" role="status">
-          <span className={`status-dot ${modelState.cls}`} aria-hidden />
-          {modelState.label}
-        </div>
-      </header>
+      <SiteNav route={route} navigate={navigate} status={modelState} onRefresh={refreshHealth} />
 
       {backendError && (
         <div className="page" style={{ paddingTop: "1rem" }}>

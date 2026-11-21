@@ -24,14 +24,14 @@ export default function HistoryPanel({
   runCompare: () => void;
 }) {
   return (
-    <div className="panel">
+    <div className="pg-card">
       <h2>Experiment history</h2>
       <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
         Completed experiments persisted in the local database. Loading one restores its exact stored
         results (config, metrics, provenance).
       </p>
       {history.length === 0 ? (
-        <p className="inspector-meta">No completed experiments yet — run one above.</p>
+        <p className="inspector-meta">No completed experiments yet — run one in the Patch tab.</p>
       ) : (
         <div className="table-scroll">
         <table className="kv-table">

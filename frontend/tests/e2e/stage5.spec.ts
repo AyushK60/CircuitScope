@@ -35,7 +35,7 @@ test.describe("Verify page", () => {
     // progress and cancel appear while the reference script runs
     await expect(card.getByRole("button", { name: "Cancel" })).toBeVisible({ timeout: 10_000 });
 
-    // a pass: colour-independent word and icon, max difference, commit shown
+    // a pass: colour-independent stamp word, max difference, commit shown (the row opens when the run ends)
     await expect(card.getByRole("status", { name: "Status: Pass" })).toBeVisible({ timeout: 200_000 });
     await expect(card.getByText("Max |app − reference|")).toBeVisible();
     await expect(card.getByText("Verified at commit")).toBeVisible();
@@ -65,22 +65,28 @@ test.describe("Sweeps page: agreement section", () => {
     await page.goto("/#/sweeps");
     await expect(page.getByRole("status").first()).toContainText("GPT-2 ready", { timeout: 30_000 });
 
-    const section = page.locator("section[aria-labelledby='agreement-heading']");
-    await expect(section.getByRole("heading", { name: "Do the three methods agree?" })).toBeVisible();
-    // The previous check's heavy-job slot can still be releasing for a moment,
-    // so a click may get the honest "already running" 422. Retry the click until accepted.
+    const section = page.locator("section#sw-agree");
+    await expect(section.getByRole("heading", { name: "Do the methods agree?" })).toBeVisible();
+    // The measurement starts by itself when the step scrolls into view. The previous check's
+    // heavy-job slot can still be releasing for a moment, so if it was refused with the honest
+    // "already running" 422, press "Run again" until it is accepted.
+    await section.scrollIntoViewIfNeeded();
     const scatters = section.getByRole("img", { name: /attention heads \(circles\) and .* MLPs \(squares\)/ });
     await expect(async () => {
-      await section.getByRole("button", { name: "Run agreement measurement" }).click();
+      if ((await scatters.count()) === 0) {
+        const again = section.getByRole("button", { name: "Run again" });
+        if (await again.isEnabled()) await again.click();
+      }
       await expect(scatters).toHaveCount(2, { timeout: 15_000 });
     }).toPass({ timeout: 200_000 });
-    await expect(section.getByRole("button", { name: "Run agreement measurement" })).toBeEnabled();
+    await expect(section.getByRole("button", { name: "Run again" })).toBeEnabled();
 
     // numbers table toggles and is accessible
     await section.getByRole("button", { name: "Show numbers table" }).first().click();
     await expect(section.getByRole("button", { name: "Hide numbers table" }).first()).toBeVisible();
 
-    // statistics caption is present and the fixed explanatory caveat shows
+    // statistics caption is inside the details disclosure, which opens on click
+    await section.getByText("Top-10 lists, statistics and method notes").click();
     await expect(section.getByText(/Agreement statistics over the 144 heads/)).toBeVisible();
 
     // The browser logs each rejected (busy-slot, HTTP 422) click as a resource error. Those
@@ -139,7 +145,7 @@ test.describe("Reproduce in Python", () => {
     test.setTimeout(240_000);
     await page.goto("/#/sweeps");
     await expect(page.getByRole("status").first()).toContainText("GPT-2 ready", { timeout: 30_000 });
-    await page.getByRole("button", { name: "Run sweep" }).click();
+    // the patching sweep starts by itself when the page opens
     await expect(page.getByRole("img", { name: /Patching sweep heatmap/ })).toBeVisible({ timeout: 120_000 });
 
     const download = page.waitForEvent("download");

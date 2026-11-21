@@ -30,7 +30,7 @@ export default function QuestionPanel({
   runQuestion: () => void;
 }) {
   return (
-    <div className="panel">
+    <div className="pg-card">
       <h2>Question &amp; Candidate Explorer</h2>
       <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
         A context, a question, and candidate answers. GPT-2 is a next-token model, <strong>not</strong> a

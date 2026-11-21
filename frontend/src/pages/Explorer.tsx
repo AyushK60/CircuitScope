@@ -9,19 +9,22 @@ import {
 } from "../api/client";
 import ArchitectureCanvas, { type CanvasLevel } from "../components/ArchitectureCanvas";
 import AttentionHeatmap from "../components/AttentionHeatmap";
-import FlowPlayback from "../components/FlowPlayback";
 import TokenRow from "../components/TokenRow";
+import GuidedTour from "./explorer/GuidedTour";
 
 type Level = CanvasLevel | "head";
-type Mode = "anatomy" | "flow";
+type Mode = "guided" | "map";
 
 const EXAMPLE = "The doctor asked the nurse to help her because she was tired.";
 
 export default function Explorer({ health }: { health: Health | null }) {
   const params = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? ""), []);
-  const [mode, setMode] = useState<Mode>(() =>
-    window.location.hash.includes("mode=flow") ? "flow" : "anatomy",
-  );
+  // the guided walk is the default (it replaces the old "flow" replay); the full map opens for
+  // ?mode=map and for Playground hand-offs that carry a hook to mark on the canvas
+  const [mode, setMode] = useState<Mode>(() => {
+    const h = window.location.hash;
+    return h.includes("mode=map") || h.includes("hook=") ? "map" : "guided";
+  });
   const [level, setLevel] = useState<Level>("model");
   const urlParams = useMemo(() => new URLSearchParams(window.location.hash.split("?")[1] ?? ""), []);
   const initialHook = useMemo(() => urlParams.get("hook"), [urlParams]);
@@ -112,8 +115,8 @@ export default function Explorer({ health }: { health: Health | null }) {
 
   if (!ready) {
     return (
-      <main className="page" style={{ maxWidth: "1400px" }}>
-        <h1>Model Explorer</h1>
+      <main className="page ex-page">
+        <h1 className="ex-title">Model Explorer</h1>
         <div className="state-banner info">
           <span className="spinner" aria-hidden /> The model is loading. The explorer reads real layer/head
           counts and captured activations, so it needs the model ready (~1 minute after backend start).
@@ -122,12 +125,83 @@ export default function Explorer({ health }: { health: Health | null }) {
     );
   }
 
+  const run = (t: string) => {
+    setRunText(t);
+    setFlow(null);
+    runCapture(t, layer);
+  };
+
   return (
-    <main className="page" style={{ maxWidth: "1400px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.8rem" }}>
+    <main className="page ex-page">
+      <header className="ex-head">
         <div>
-          <h1>Model Explorer</h1>
-          <p className="breadcrumbs" aria-label="Breadcrumb">
+          <p className="ex-kick">Follow one sentence through GPT-2</p>
+          <h1 className="ex-title">Model Explorer</h1>
+          <p className="ex-sub">
+            Type a sentence, then walk through every stage the model runs on it. Everything shown is measured
+            on your own computer.
+          </p>
+        </div>
+        <div className="ex-head-side">
+          <div className="mode-tabs" role="tablist" aria-label="Explorer view">
+            <button role="tab" aria-selected={mode === "guided"} className={mode === "guided" ? "active" : ""} onClick={() => setMode("guided")}>
+              Guided tour
+            </button>
+            <button role="tab" aria-selected={mode === "map"} className={mode === "map" ? "active" : ""} onClick={() => setMode("map")}>
+              Full map
+            </button>
+          </div>
+          <div className="inspector-meta">
+            {meta.model_id} · {meta.n_layers} blocks · {meta.n_heads} heads · d_model {meta.d_model} · {meta.device}
+          </div>
+        </div>
+      </header>
+
+      <form
+        className="ex-input"
+        onSubmit={(e) => {
+          e.preventDefault();
+          run(text);
+        }}
+      >
+        <label htmlFor="explorer-text">Sentence</label>
+        <input id="explorer-text" type="text" value={text} onChange={(e) => setText(e.target.value)} />
+        <button className="primary" type="submit" disabled={busy}>
+          {busy ? "Capturing…" : "Run & capture"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setText(EXAMPLE);
+            setRunText(EXAMPLE);
+            runCapture(EXAMPLE, layer);
+          }}
+        >
+          Example
+        </button>
+      </form>
+      {error && <div className="state-banner error" style={{ marginTop: "0.6rem" }}>{error}</div>}
+
+      {mode === "guided" ? (
+        <GuidedTour flow={flow} meta={meta} />
+      ) : (
+        <div className="ex-map theme-dark">
+          <div className="ex-tokenbar">
+            <span>Tokens received</span>
+            <TokenRow tok={tokenization} />
+          </div>
+          {intervention && (
+            <div className="state-banner warn" style={{ marginTop: "1rem" }} role="status">
+              <span>
+                <strong>Intervention overlay:</strong> {intervention.hook} at token position {intervention.position} is
+                marked on the canvas (dashed brass box).{" "}
+                <a href={`#/playground?hook=${encodeURIComponent(intervention.hook)}&position=${intervention.position}`}>
+                  Open it in the Playground →
+                </a>
+              </span>
+            </div>
+          )}
+          <p className="breadcrumbs" aria-label="Breadcrumb" style={{ marginTop: "0.8rem" }}>
             {crumbs.map((b, i) => (
               <span key={i} style={{ display: "contents" }}>
                 {i > 0 && <span aria-hidden> › </span>}
@@ -135,108 +209,40 @@ export default function Explorer({ health }: { health: Health | null }) {
               </span>
             ))}
           </p>
-        </div>
-        <div className="mode-tabs" role="tablist" aria-label="Explorer mode">
-          <button role="tab" aria-selected={mode === "anatomy"} className={mode === "anatomy" ? "active" : ""} onClick={() => setMode("anatomy")}>
-            Anatomy
-          </button>
-          <button role="tab" aria-selected={mode === "flow"} className={mode === "flow" ? "active" : ""} onClick={() => setMode("flow")}>
-            Computation Flow
-          </button>
-        </div>
-        <div className="inspector-meta" style={{ textAlign: "right" }}>
-          {meta.model_id} · {meta.n_layers} blocks · {meta.n_heads} heads · d_model {meta.d_model} · {meta.device}
-        </div>
-      </div>
-
-      <div className="panel" style={{ padding: "0.9rem 1.2rem" }}>
-        <div style={{ display: "flex", gap: "0.8rem", alignItems: "end", flexWrap: "wrap" }}>
-          <div style={{ flex: 2, minWidth: "260px" }}>
-            <label htmlFor="explorer-text" style={{ fontSize: "0.85rem", color: "var(--text-2)" }}>
-              Input for measured views
-            </label>
-            <textarea id="explorer-text" rows={2} value={text} onChange={(e) => setText(e.target.value)} />
-          </div>
-          <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
-            <button
-              className="primary"
-              onClick={() => {
-                setRunText(text);
-                setFlow(null);
-                runCapture(text, layer);
-              }}
-              disabled={busy}
-            >
-              {busy ? "Capturing…" : "Run & capture"}
-            </button>
-            <button onClick={() => { setText(EXAMPLE); setRunText(EXAMPLE); runCapture(EXAMPLE, layer); }}>
-              Example
-            </button>
-          </div>
-          <div style={{ flex: 2, minWidth: "240px" }}>
-            <span style={{ fontSize: "0.85rem", color: "var(--text-2)", display: "block" }}>Tokens received</span>
-            <TokenRow tok={tokenization} />
+          <div className="explorer-grid" style={{ alignItems: "start", marginTop: "0.8rem" }}>
+            <div className="panel" style={{ padding: "0.6rem" }}>
+              <ArchitectureCanvas
+                meta={meta}
+                flow={flow}
+                level={level === "head" ? "attn" : (level as CanvasLevel)}
+                layer={layer}
+                keyboardFocusLayer={layer}
+                intervention={intervention}
+                onLevel={(l) => setLevel(l)}
+                onLayer={(l) => setLayer(l)}
+                onHead={(h) => {
+                  setHead(h);
+                  setLevel("head");
+                }}
+              />
+            </div>
+            <div className="panel inspector-sticky">
+              <InspectorConsole
+                meta={meta}
+                flow={flow}
+                level={level}
+                layer={layer}
+                head={head}
+                attention={attentionForLayer}
+                onLayer={(l) => { setLayer(l); setLevel("block"); }}
+                onHead={(h) => { setHead(h); setLevel("head"); }}
+                runText={runText}
+                compareHead={compareHead}
+                onCompareHead={setCompareHead}
+              />
+            </div>
           </div>
         </div>
-        {error && <div className="state-banner error" style={{ marginTop: "0.6rem" }}>{error}</div>}
-      </div>
-
-      {mode === "flow" ? (
-        <div style={{ marginTop: "1rem" }}>
-          <p style={{ color: "var(--text-1)", maxWidth: "80ch" }}>
-            A guided replay of one real forward pass: tokenization, embeddings, every transformer block,
-            final normalization, and output scores. Every heatmap, norm, and score below was captured from
-            the actual run on your text.
-          </p>
-          <FlowPlayback flow={flow} />
-        </div>
-      ) : (
-        <>
-        {intervention && (
-          <div className="state-banner warn" style={{ marginTop: "1rem" }} role="status">
-            <span>
-              <strong>Intervention overlay:</strong> {intervention.hook} at token position{" "}
-              {intervention.position} is marked on the canvas (dashed brass box).{" "}
-              <a href={`#/playground?hook=${encodeURIComponent(intervention.hook)}&position=${intervention.position}`}>
-                Open it in the Playground →
-              </a>
-            </span>
-          </div>
-        )}
-        <div className="explorer-grid" style={{ alignItems: "start", marginTop: "1rem" }}>
-          <div className="panel" style={{ padding: "0.6rem" }}>
-            <ArchitectureCanvas
-              meta={meta}
-              flow={flow}
-              level={level === "head" ? "attn" : (level as CanvasLevel)}
-              layer={layer}
-              keyboardFocusLayer={layer}
-              intervention={intervention}
-              onLevel={(l) => setLevel(l)}
-              onLayer={(l) => setLayer(l)}
-              onHead={(h) => {
-                setHead(h);
-                setLevel("head");
-              }}
-            />
-          </div>
-          <div className="panel inspector-sticky">
-            <InspectorConsole
-              meta={meta}
-              flow={flow}
-              level={level}
-              layer={layer}
-              head={head}
-              attention={attentionForLayer}
-              onLayer={(l) => { setLayer(l); setLevel("block"); }}
-              onHead={(h) => { setHead(h); setLevel("head"); }}
-              runText={runText}
-              compareHead={compareHead}
-              onCompareHead={setCompareHead}
-            />
-          </div>
-        </div>
-        </>
       )}
     </main>
   );

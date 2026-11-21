@@ -1,0 +1,51 @@
+/* ---- Neural Network Lab: controls and outputs sit on the diagram (journal theme) ---- */
+
+.nl-page { max-width: 1240px; }
+.nl-note { margin: 1.2rem 0 0; padding: 0.8rem 1.1rem; background: var(--bg-2); border-radius: 14px; font-size: 0.92rem; }
+
+.nl-stage {
+  position: relative; margin-top: 1.2rem; padding: 0.4rem 0.4rem 0;
+  background: var(--bg-1); border: 1px solid var(--line-0); border-radius: 20px; box-shadow: var(--shadow);
+}
+.nl-stage svg { display: block; width: 100%; height: auto; }
+.nl-node { cursor: pointer; }
+.nl-node:focus-visible { outline: none; }
+.nl-node:focus-visible circle:nth-of-type(2) { stroke: var(--accent); }
+
+/* sliders beside the input neurons, output bars beside the output neurons */
+.nl-sliders, .nl-outs { position: absolute; inset: 0; pointer-events: none; }
+.nl-slid, .nl-obar {
+  position: absolute; left: var(--x); top: var(--y); display: flex; align-items: center; gap: 0.4rem;
+  transform: translateY(-50%); pointer-events: auto; font: 0.78rem var(--font-mono); color: var(--text-2);
+}
+.nl-slid { margin: 0; }
+.nl-slid input { width: 96px; accent-color: var(--accent); }
+.nl-slid em { width: 2.2rem; color: var(--text-0); font-style: normal; text-align: right; }
+.nl-obar span { width: 3.5rem; }
+.nl-obar div { width: 78px; height: 11px; overflow: hidden; background: var(--bg-2); border-radius: 6px; }
+.nl-obar i { display: block; height: 100%; background: var(--line-1); border-radius: 6px; transition: width 0.25s; }
+.nl-obar.top1 i { background: var(--measure); }
+.nl-obar b { width: 3.2rem; color: var(--text-0); text-align: right; }
+
+.nl-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem 1.4rem; padding: 0.3rem 1rem 1rem; }
+.nl-legend { display: flex; flex: 1; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.2rem; min-width: 18rem; margin: 0; color: var(--text-2); font-size: 0.8rem; }
+.nl-legend i { display: inline-block; width: 22px; height: 4px; margin-right: 0.35rem; vertical-align: middle; border-radius: 2px; }
+.nl-legend i.pos { background: var(--div-pos); }
+.nl-legend i.neg { background: var(--div-neg); }
+.nl-actions { display: flex; gap: 0.6rem; }
+.nl-actions button { padding: 0.55rem 1.1rem; font-weight: 600; }
+
+.nl-below { align-items: start; margin-top: 1.2rem; }
+.nl-facts { margin: 0.6rem 0 1rem; padding: 0; list-style: none; }
+.nl-facts li { padding: 0.4rem 0; color: var(--text-1); border-bottom: 1px solid var(--line-0); }
+
+/* narrow screens: sliders stack above the diagram, output bars below it */
+@media (max-width: 860px) {
+  .nl-stage { display: flex; flex-direction: column; padding: 0.8rem; }
+  .nl-sliders { position: static; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem 1rem; order: -1; margin-bottom: 0.8rem; }
+  .nl-outs { position: static; display: grid; gap: 0.4rem; margin-top: 0.6rem; }
+  .nl-slid, .nl-obar { position: static; left: auto; top: auto; transform: none; }
+  .nl-slid { justify-content: space-between; min-width: 0; }
+  .nl-slid input { flex: 1; width: auto; min-width: 0; }
+  .nl-obar div { flex: 1; width: auto; min-width: 0; }
+}

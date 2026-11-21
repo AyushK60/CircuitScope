@@ -7,11 +7,14 @@ export default function TopPredictions({
   metric = "logit",
   maxRows = 8,
   highlight = [],
+  barColor = "var(--accent)",
 }: {
   candidates: Candidate[] | null;
   metric?: "logit" | "prob";
   maxRows?: number;
   highlight?: string[];
+  /** fill for probability bars (logit bars keep their signed colours) */
+  barColor?: string;
 }) {
   if (!candidates) return <div className="skeleton" style={{ height: "10rem" }} />;
   const rows = candidates.slice(0, maxRows);
@@ -25,7 +28,7 @@ export default function TopPredictions({
             <div className="bar-track">
               <div
                 className="bar-fill"
-                style={{ left: 0, width: `${(c.prob / max) * 100}%`, background: "var(--accent)" }}
+                style={{ left: 0, width: `${(c.prob / max) * 100}%`, background: barColor }}
               />
             </div>
             <span className="value">{(c.prob * 100).toFixed(2)}%</span>

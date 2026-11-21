@@ -25,7 +25,7 @@ export default function ResultsPanel({
   if (!(runState === "complete" && res && m)) return null;
   return (
     <>
-      <div className="panel">
+      <div className="pg-card">
         <h2>2 · Measured effect</h2>
         <div className="metric-cards">
           <MetricCard
@@ -53,7 +53,7 @@ export default function ResultsPanel({
         </p>
       </div>
 
-      <div className="panel">
+      <div className="pg-card">
         <h2>3 · Compare all three runs</h2>
         <div className="grid-3">
           <div className="run-column clean">

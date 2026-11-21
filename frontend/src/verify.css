@@ -1,0 +1,71 @@
+/* ---- Verify: ledger of checks with stamps and tolerance gauges (journal theme) ---- */
+
+.vf-page { max-width: 1180px; }
+.vf-header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 2rem; }
+.vf-score { display: flex; align-items: center; gap: 1.1rem; }
+.vf-score p { margin: 0; max-width: 16em; color: var(--text-2); font-size: 0.85rem; }
+.vf-ring { display: grid; place-items: center; width: 96px; height: 96px; border-radius: 50%; }
+.vf-ring > div {
+  display: grid; place-items: center; width: 72px; height: 72px; border-radius: 50%; background: var(--bg-0);
+  font: 600 1.4rem var(--font-display);
+}
+.vf-note { margin: 1.4rem 0 0.8rem; padding: 0.9rem 1.1rem; background: var(--bg-2); border-radius: 14px; font-size: 0.92rem; }
+.vf-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 0.8rem; margin: 1rem 0 0.9rem; color: var(--text-2); font-size: 0.85rem; }
+.vf-bar button { padding: 0.6rem 1.2rem; font-weight: 600; }
+
+.vf-ledger { overflow: hidden; background: var(--bg-1); border: 1px solid var(--line-0); border-radius: 18px; box-shadow: var(--shadow); }
+.vf-row + .vf-row { border-top: 1px solid var(--line-0); }
+.vf-row > details > summary {
+  display: grid; grid-template-columns: 6.6rem minmax(0, 1.1fr) minmax(0, 1.2fr) 6.4rem; gap: 1.2rem; align-items: center;
+  padding: 1.05rem 1.3rem; list-style: none; cursor: pointer;
+}
+.vf-row > details > summary::-webkit-details-marker { display: none; }
+.vf-row > details > summary:hover { background: var(--bg-2); }
+
+/* the stamp: status in words, slightly tilted like a rubber stamp */
+.vf-stamp {
+  justify-self: start; padding: 0.15rem 0.6rem; border: 2px solid; border-radius: 8px; transform: rotate(-4deg);
+  font: 700 0.8rem var(--font-display); letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap;
+}
+.vf-stamp.pass { color: var(--ok); border-color: var(--ok); }
+.vf-stamp.stale { color: var(--brass); border-color: var(--brass); }
+.vf-stamp.fail { color: var(--danger); border-color: var(--danger); }
+.vf-stamp.never { color: var(--text-2); border-color: var(--line-1); }
+.vf-stamp.manual { color: var(--text-2); border-color: var(--line-1); border-style: dashed; }
+
+.vf-title h3 { margin: 0; font: 600 1.15rem var(--font-display); }
+.vf-what { display: block; margin-top: 0.15rem; color: var(--text-2); font-size: 0.85rem; }
+
+.vf-gauge-col { display: block; min-width: 0; }
+.vf-big { display: block; margin-bottom: 0.3rem; color: var(--measure); font: 500 1.6rem var(--font-display); line-height: 1.1; }
+.vf-big small { margin-left: 0.4rem; color: var(--text-2); font-family: inherit; font-size: 0.78rem; }
+.vf-big.over { color: var(--danger); }
+.vf-big.stale { color: var(--text-2); }
+.vf-gauge { position: relative; display: block; height: 12px; background: var(--bg-2); border-radius: 6px; }
+.vf-gauge i { position: absolute; top: 0; bottom: 0; left: 0; min-width: 6px; background: var(--measure); border-radius: 6px; }
+.vf-gauge i.stale { background: var(--line-1); }
+.vf-gauge i.over { background: var(--danger); }
+.vf-gauge u { position: absolute; top: -4px; bottom: -4px; left: 80%; width: 2px; background: var(--danger); }
+.vf-gauge.none { background: repeating-linear-gradient(45deg, var(--bg-2) 0 6px, transparent 6px 10px); }
+.vf-gl { display: flex; justify-content: space-between; margin-top: 0.35rem; color: var(--text-2); font: 0.72rem var(--font-mono); }
+.vf-run { display: block; color: var(--text-2); font-size: 0.82rem; }
+.vf-run > span:first-child { display: block; margin-bottom: 0.3rem; }
+.vf-actions { display: flex; justify-content: flex-end; }
+.vf-actions button { padding: 0.5rem 1rem; }
+
+.vf-body { padding: 0.2rem 1.3rem 1.3rem 9.1rem; }
+.vf-body .kv-table { max-width: 34rem; }
+.vf-stale { margin: 0.4rem 0; color: var(--brass); font-size: 0.9rem; }
+.verify-stdout {
+  max-height: 14rem; overflow: auto; margin-top: 0.5rem; padding: 0.7rem 0.9rem; font-size: 0.72rem;
+  white-space: pre-wrap; word-break: break-word; background: var(--bg-2); border-radius: 10px;
+}
+
+@media (max-width: 900px) {
+  .vf-row > details > summary { grid-template-columns: minmax(0, 1fr) auto; gap: 0.7rem 1rem; }
+  .vf-stamp { grid-column: 1; }
+  .vf-title { grid-column: 1 / -1; }
+  .vf-gauge-col { grid-column: 1 / -1; }
+  .vf-actions { grid-column: 2; grid-row: 1; }
+  .vf-body { padding-left: 1.3rem; }
+}

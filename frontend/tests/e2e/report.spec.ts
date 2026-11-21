@@ -40,7 +40,8 @@ test.describe("Report page", () => {
     }
 
     // no study attached -> the how_sure section says so instead of inventing numbers
-    await expect(page.getByText(/Not run yet: the multi-prompt evidence/)).toBeVisible();
+    // (the same claim also appears in the "In short" card, so look inside the section itself)
+    await expect(page.locator("#report-how_sure").getByText(/Not run yet: the multi-prompt evidence/)).toBeVisible();
 
     // a glossary term opens by keyboard and closes with Escape
     const term = page.getByRole("button", { name: "score gap" }).first();

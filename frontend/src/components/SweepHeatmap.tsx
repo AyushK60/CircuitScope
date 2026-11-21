@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
  * toggles an accessible <table> of the same values.
  */
 
-const CELL = 30;
+const CELL = 34;
 const LABEL_W = 70;
 const LABEL_H = 46;
 
@@ -20,14 +20,10 @@ export interface SweepHeatmapProps {
   direction?: string;
 }
 
-// diverging scale: negative -> corrupted vermilion, 0 -> ink, positive -> sage
-const NEG = [201, 106, 94]; // var(--danger) #c96a5e
-const ZERO = [43, 48, 45]; // var(--bg-2) #2b302d
-const POS = [145, 170, 145]; // var(--sage) #91aa91
-
-function mix(a: number[], b: number[], t: number): string {
-  const c = a.map((av, i) => Math.round(av + (b[i] - av) * t));
-  return `rgb(${c[0]},${c[1]},${c[2]})`;
+// diverging scale from the theme's --div-neg / --div-zero / --div-pos (negative = corrupted, positive = restored)
+function mix(side: "pos" | "neg" | "zero", t: number): string {
+  if (side === "zero") return "var(--div-zero)";
+  return `color-mix(in srgb, var(--div-${side}) ${Math.round(Math.max(0, Math.min(1, t)) * 100)}%, var(--div-zero))`;
 }
 
 function fmt(v: number, digits: number): string {
@@ -51,7 +47,7 @@ export default function SweepHeatmap({
   }, [recovery]);
 
   const color = (v: number) =>
-    Number.isFinite(v) ? mix(ZERO, v >= 0 ? POS : NEG, Math.min(1, Math.abs(v) / maxAbs)) : "var(--bg-3)";
+    Number.isFinite(v) ? mix(v >= 0 ? "pos" : "neg", Math.min(1, Math.abs(v) / maxAbs)) : "var(--bg-3)";
 
   const nRows = rowLabels.length;
   const nCols = colLabels.length;
@@ -70,7 +66,7 @@ export default function SweepHeatmap({
           <span
             className="legend-bar"
             style={{
-              background: `linear-gradient(90deg, ${mix(ZERO, NEG, 1)}, ${mix(ZERO, NEG, 0.5)}, ${mix(ZERO, ZERO, 0)}, ${mix(ZERO, POS, 0.5)}, ${mix(ZERO, POS, 1)})`,
+              background: `linear-gradient(90deg, ${mix("neg", 1)}, ${mix("neg", 0.5)}, ${mix("zero", 0)}, ${mix("pos", 0.5)}, ${mix("pos", 1)})`,
             }}
           />
           <span>0</span>
@@ -104,7 +100,11 @@ export default function SweepHeatmap({
                     return (
                       <td
                         key={ci}
-                        style={{ textAlign: "right", color: color(v), fontWeight: Math.abs((v ?? 0) - 1) < 5e-4 ? 700 : 400 }}
+                        style={{
+                          textAlign: "right",
+                          color: (v ?? 0) >= 0.5 ? "var(--div-pos)" : (v ?? 0) <= -0.5 ? "var(--div-neg)" : undefined,
+                          fontWeight: Math.abs((v ?? 0) - 1) < 5e-4 ? 700 : 400,
+                        }}
                       >
                         {fmt(v ?? NaN, 3)}
                       </td>

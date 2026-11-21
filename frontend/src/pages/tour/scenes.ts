@@ -1,4 +1,10 @@
+import type { ReportResult, ReportSection } from "../../api/client";
+
 /** Pure tour logic, kept separate so Vitest can drive it with fake timers. */
+
+export function sectionOf(report: ReportResult, id: string): ReportSection | undefined {
+  return report.sections.find((s) => s.id === id);
+}
 
 export const AUTO_ADVANCE_MS = 14000;
 

@@ -42,16 +42,9 @@ export default function AttentionHeatmap({
       .slice(0, 4);
   }, [selectedQuery, matrix]);
 
-  const color = useMemo(() => {
-    // sequential ink→persimmon warm scale; value in [0,1] (rows sum to 1)
-    return (v: number) => {
-      const t = Math.max(0, Math.min(1, v));
-      const r = Math.round(43 + t * 180);
-      const g = Math.round(48 + t * 73);
-      const b = Math.round(45 + t * 45);
-      return `rgb(${r},${g},${b})`;
-    };
-  }, []);
+  // sequential scale between the theme's --heat-lo and --heat-hi; value in [0,1] (rows sum to 1)
+  const heat = (v: number) =>
+    `color-mix(in srgb, var(--heat-hi) ${Math.round(Math.max(0, Math.min(1, v)) * 100)}%, var(--heat-lo))`;
 
   if (!att || !matrix) return <div className="skeleton" style={{ height: "18rem" }} />;
   const n = tokens.length;
@@ -105,7 +98,8 @@ export default function AttentionHeatmap({
                 y={40 + q * CELL}
                 width={CELL - 2}
                 height={CELL - 2}
-                fill={masked ? "var(--bg-2)" : color(v)}
+                fill={masked ? "var(--bg-2)" : undefined}
+                style={masked ? undefined : { fill: heat(v) }}
                 opacity={masked ? 0.5 : dimmed ? 0.25 : 1}
                 stroke={selectedQuery === q && v > 0.001 ? "var(--brass)" : "transparent"}
                 strokeWidth={selectedQuery === q ? 1 : 0}
@@ -155,7 +149,7 @@ export default function AttentionHeatmap({
       )}
       <div className="legend-scale">
         <span>0</span>
-        <div className="legend-bar" style={{ background: "linear-gradient(90deg, rgb(43,48,45), rgb(223,121,90))" }} />
+        <div className="legend-bar" style={{ background: "linear-gradient(90deg, var(--heat-lo), var(--heat-hi))" }} />
         <span>attention weight 1.0 · rows sum to 1 · click a row token to inspect it · dark gray = causally masked (key after query)</span>
         {onCompareHead && (
           <label className="inspector-meta" style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
