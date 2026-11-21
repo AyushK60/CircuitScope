@@ -33,7 +33,7 @@ export const EXAMPLES = [
   },
 ] as const;
 
-/** Patchable hooks offered — all verified in the backend allowlist
+/** Patchable hooks offered - all verified in the backend allowlist
  *  (PATCHABLE_HOOKS). Generated so the UI can never desync from state. */
 export const HOOK_OPTIONS = [
   ...Array.from({ length: 12 }, (_, l) => ({

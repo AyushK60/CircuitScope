@@ -1,4 +1,4 @@
-"""The "study" job type — the pre-registered study.
+"""The "study" job type - the pre-registered study.
 
 Pipeline per prompt (Task 6 spec):
   clean cache -> 3 corrupted baselines -> exact denoising for 3 corruptions

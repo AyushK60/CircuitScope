@@ -75,7 +75,7 @@ export function LogitsBand({ x, y, w, flow }: { x: number; y: number; w: number;
             );
           })}
           <text x={x + w - 12} y={y + 104} fill="var(--brass)" fontSize={8} textAnchor="end" fontFamily="var(--font-mono)">
-            MEASURED — softmax of real logits
+            MEASURED - softmax of real logits
           </text>
         </>
       ) : (

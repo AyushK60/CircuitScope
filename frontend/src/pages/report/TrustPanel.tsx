@@ -7,7 +7,7 @@ function fmtVal(v: unknown): string {
 }
 
 /** "Why trust this?" panel. A failed check is shown in red
- * with its number and labelled FAILED — colour is never the only signal. */
+ * with its number and labelled FAILED - colour is never the only signal. */
 export default function TrustPanel({ trust }: { trust: ReportSection["trust"] }) {
   return (
     <details className="trust-panel">
@@ -37,7 +37,7 @@ export default function TrustPanel({ trust }: { trust: ReportSection["trust"] })
             <ul>
               {trust.checks.map((c) => (
                 <li key={c.id} className={c.ok ? "check-ok" : "check-failed"}>
-                  {c.ok ? "ok —" : "FAILED —"} {c.label}: {fmtVal(c.value)}
+                  {c.ok ? "ok -" : "FAILED -"} {c.label}: {fmtVal(c.value)}
                   {c.tolerance !== null && c.tolerance !== undefined ? ` (limit ${fmtVal(c.tolerance)})` : ""}
                 </li>
               ))}

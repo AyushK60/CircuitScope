@@ -29,7 +29,7 @@ export default function GlossaryList({ level = "curious" }: { level?: ReadingLev
               </p>
               {t.analogy && (
                 <p className="inspector-meta">
-                  <em>Analogy:</em> {t.analogy.text} — <em>where it breaks:</em> {t.analogy.breaks_when}
+                  <em>Analogy:</em> {t.analogy.text} - <em>where it breaks:</em> {t.analogy.breaks_when}
                 </p>
               )}
               {t.see_also && t.see_also.length > 0 && (
@@ -43,7 +43,7 @@ export default function GlossaryList({ level = "curious" }: { level?: ReadingLev
       <ul className="analogy-list">
         {ANALOGIES.map((a) => (
           <li key={a.id}>
-            <strong>Think of it like {a.title}</strong> — an analogy, not a description of the model. {a.text}{" "}
+            <strong>Think of it like {a.title}</strong> - an analogy, not a description of the model. {a.text}{" "}
             <em>Where it breaks:</em> {a.breaks_when}
           </li>
         ))}

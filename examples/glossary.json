@@ -1,5 +1,5 @@
 {
-  "$comment": "Shared glossary for CircuitScope. Single source for backend templates (backend/app/explain/glossary.py) and the frontend (frontend/src/lib/glossary.ts). Each term has three levels; curious definitions must pass the claim lint (short sentences, simple words). Every analogy has a mandatory breaks_when line. This is fixed content written by hand — no model-generated text at runtime.",
+  "$comment": "Shared glossary for CircuitScope. Single source for backend templates (backend/app/explain/glossary.py) and the frontend (frontend/src/lib/glossary.ts). Each term has three levels; curious definitions must pass the claim lint (short sentences, simple words). Every analogy has a mandatory breaks_when line. This is fixed content written by hand - no model-generated text at runtime.",
   "terms": {
     "token": {
       "display": "token",
@@ -62,7 +62,7 @@
       "display": "block (layer)",
       "curious": "A block is one processing step of the model. GPT-2 Small has 12 blocks in a row, numbered 0 to 11.",
       "student": "A block (also called a layer) contains one attention sublayer and one MLP sublayer. The blocks run in order, and each adds its results into the residual stream.",
-      "expert": "Blocks are pre-LN transformers blocks: Attn(LN1(x)) and MLP(LN2(x)) added residually. blocks.{i}.hook_out is the residual stream after block i — the primary patch site.",
+      "expert": "Blocks are pre-LN transformers blocks: Attn(LN1(x)) and MLP(LN2(x)) added residually. blocks.{i}.hook_out is the residual stream after block i - the primary patch site.",
       "see_also": ["residual_stream", "attention_head", "mlp"]
     },
     "patching": {
@@ -108,7 +108,7 @@
       "expert": "lens_i = LN_final(r_i) · W_U applied per stage (embeddings, then blocks 0..11 output). Final stage must reproduce the model's real logits exactly (checked live); earlier stages are untrained readouts and must not be read as the model's 'thoughts'.",
       "analogy": {
         "text": "The logit lens is like asking someone to say their best guess while a sentence is only half built. Each block's stage is one more guess.",
-        "breaks_when": "The half-built notes were never meant to be read as words. Early guesses are not what the model 'was thinking' — the readout is one the model only uses at the very end."
+        "breaks_when": "The half-built notes were never meant to be read as words. Early guesses are not what the model 'was thinking' - the readout is one the model only uses at the very end."
       },
       "see_also": ["residual_stream", "score_gap"]
     },
@@ -196,7 +196,7 @@
       "term_id": "logit_lens",
       "title": "reading a half-finished sentence out loud",
       "text": "The logit lens is like asking someone to say their best guess while a sentence is only half built. Each block's stage is one more guess.",
-      "breaks_when": "The half-built notes were never meant to be read as words. Early guesses are not what the model 'was thinking' — the readout is one the model only uses at the very end."
+      "breaks_when": "The half-built notes were never meant to be read as words. Early guesses are not what the model 'was thinking' - the readout is one the model only uses at the very end."
     }
   ]
 }

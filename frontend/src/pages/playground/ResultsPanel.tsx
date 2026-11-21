@@ -30,12 +30,12 @@ export default function ResultsPanel({
         <div className="metric-cards">
           <MetricCard
             name="D · logit(A) − logit(B)"
-            value={m.D_patched?.toFixed(3) ?? "—"}
+            value={m.D_patched?.toFixed(3) ?? "-"}
             sub={`clean ${m.D_clean?.toFixed(3)} · corrupted ${m.D_corrupted?.toFixed(3)}`}
           />
           <MetricCard
             name="Δ effect of patch"
-            value={m.Delta?.toFixed(3) ?? "—"}
+            value={m.Delta?.toFixed(3) ?? "-"}
             sub="D_patched − D_corrupted"
           />
           <MetricCard
@@ -46,7 +46,7 @@ export default function ResultsPanel({
         </div>
         <p className="inspector-meta">
           {m.Recovery != null && Math.abs(m.Recovery) < 0.05
-            ? "The intervention had a negligible measured effect on this example — reported as measured."
+            ? "The intervention had a negligible measured effect on this example - reported as measured."
             : m.Recovery != null && m.Recovery > 0.5
               ? "The patched activation carried most of the clean-vs-corrupted information for this metric."
               : "Sign convention: positive D means candidate A scores above candidate B at the final position."}
@@ -116,7 +116,7 @@ export default function ResultsPanel({
         <p className="inspector-meta" style={{ marginTop: "0.8rem" }}>
           <strong>What this establishes (and what it does not):</strong> replacing this activation at
           these positions changed the model's measured preference under this specific intervention.
-          It is evidence about this example and hook — not a proof that one component "understands"
+          It is evidence about this example and hook - not a proof that one component "understands"
           anything, and not a statistical claim over other inputs.
         </p>
       </div>

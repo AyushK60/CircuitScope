@@ -1,8 +1,8 @@
 """Independent reference implementation of direct logit attribution (DLA) and
 the logit lens, written SEPARATELY from the backend implementation.
 
-Uses raw Hugging Face transformers + PyTorch forward hooks only — no
-TransformerLens, no backend imports — so the backend's /api/analysis/dla and
+Uses raw Hugging Face transformers + PyTorch forward hooks only - no
+TransformerLens, no backend imports - so the backend's /api/analysis/dla and
 /api/analysis/logit_lens numbers are verified against a genuinely separate
 code path.
 

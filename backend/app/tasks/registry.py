@@ -3,7 +3,7 @@ real tokenizer.
 
 - ``load_all()`` reads every ``*.json`` in the tasks directory (built from the
   repo root, never from request input). A malformed or schema-invalid file is
-  recorded in ``load_errors`` and skipped — it must never crash app startup.
+  recorded in ``load_errors`` and skipped - it must never crash app startup.
 - ``validate_task()`` checks each pair against the real model tokenizer
   (single-token candidates, token alignment, position ranges, hook
   allowlist). It needs the model, so it runs lazily on request and the result
@@ -137,7 +137,7 @@ def validate_task(task: Task) -> dict:
         if n_clean != n_corr:
             perrors.append(f"clean/corrupted token counts differ: {n_clean} vs {n_corr}")
         if pair.clean_text == pair.corrupted_text:
-            perrors.append("clean and corrupted texts are identical — no contrast")
+            perrors.append("clean and corrupted texts are identical - no contrast")
         seq_len = n_clean
 
         for name, pos in pair.positions_of_interest.items():

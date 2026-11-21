@@ -1,5 +1,5 @@
 // Typed API client for the CircuitScope backend. All displayed model-derived
-// values in the UI come through these calls — no fabricated numbers.
+// values in the UI come through these calls - no fabricated numbers.
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? "http://127.0.0.1:8000";
 

@@ -1,6 +1,7 @@
 {
   "name": "circuitscope-frontend",
   "private": true,
+  "author": "AyushK60",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

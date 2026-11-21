@@ -106,7 +106,7 @@ export default function ArchitectureCanvas({
         const d = e.key === "ArrowDown" ? 1 : -1;
         const next = Math.min(meta.n_layers - 1, Math.max(0, keyboardFocusLayer + d));
         onLayer(next);
-        setHover({ x: 0, y: 0, title: `Block ${next}`, lines: ["keyboard focus — press Enter to open"] });
+        setHover({ x: 0, y: 0, title: `Block ${next}`, lines: ["keyboard focus - press Enter to open"] });
       } else if (e.key === "Enter") {
         enterBlock(keyboardFocusLayer);
       } else if (e.key === "+" || e.key === "=") {

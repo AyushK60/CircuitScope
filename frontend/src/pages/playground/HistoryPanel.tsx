@@ -31,7 +31,7 @@ export default function HistoryPanel({
         results (config, metrics, provenance).
       </p>
       {history.length === 0 ? (
-        <p className="inspector-meta">No completed experiments yet — run one in the Patch tab.</p>
+        <p className="inspector-meta">No completed experiments yet - run one in the Patch tab.</p>
       ) : (
         <div className="table-scroll">
         <table className="kv-table">

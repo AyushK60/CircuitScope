@@ -2,8 +2,8 @@
 
 For one prompt and one corruption this module returns, for all 156 components
 (144 attention heads + 12 MLP ``mlp.hook_out`` blocks), the two metrics of the
-patched run — ``D_patched`` (logit difference at the final position) and
-``P_patched`` (softmax probability of the IO candidate over the full vocab) —
+patched run - ``D_patched`` (logit difference at the final position) and
+``P_patched`` (softmax probability of the IO candidate over the full vocab) -
 and the normalised denoising recoveries:
 
     Rec_D = (D_patched - D_corr) / (D_clean - D_corr)
@@ -87,7 +87,7 @@ def denoise_effects(
     copied into the corrupted run (sufficiency direction).
 
     Returns baselines, raw d_patched/p_patched vectors and rec_d/rec_p
-    (None where the denominator is zero — the caller excludes those pairs).
+    (None where the denominator is zero - the caller excludes those pairs).
     """
     tok_a, tok_b = token_ids(candidate_a, candidate_b)
     d_clean, p_clean = metrics_from_logits(logits_clean, tok_a, tok_b)
@@ -213,7 +213,7 @@ def mean_ablation_effects(
     the leave-one-out mean over ``family_caches`` (the clean caches of the
     OTHER prompts of the same template, same token length) at the same hook
     and positions. Raises if the family is empty (e.g. a template with a
-    single generated prompt in smoke tests) — the caller must skip the prompt
+    single generated prompt in smoke tests) - the caller must skip the prompt
     and count it."""
     if not family_caches:
         raise ValueError("mean ablation needs at least one other prompt of the same template")

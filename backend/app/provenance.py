@@ -5,7 +5,7 @@ Hugging Face revision, device/dtype, library versions, git state, UTC timestamp.
 Everything except timestamp_utc and git_commit is cached (git and metadata
 lookups are slow, but a long-running server must not report a stale HEAD, so
 git_commit is computed fresh on every call). Model loading is never triggered
-here — callers run collect() after the model is already loaded.
+here - callers run collect() after the model is already loaded.
 """
 
 from __future__ import annotations

@@ -226,7 +226,7 @@ export default function Tour({ health }: { health: Health | null }) {
               real computation on the model, not a recording.
             </p>
             <div className="inspector-meta" role="status" style={{ margin: "0.6rem 0 0.25rem" }}>
-              {Math.round(genProgress * 100)}% — {genMessage}
+              {Math.round(genProgress * 100)}% - {genMessage}
             </div>
             <div className="tr-gen">
               <div style={{ width: `${Math.round(genProgress * 100)}%` }} />

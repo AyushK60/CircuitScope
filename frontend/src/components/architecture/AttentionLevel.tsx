@@ -20,7 +20,7 @@ export default function AttentionLevel({
   return (
     <g>
       <text x={30} y={40} fill="var(--text-0)" fontSize={20} fontFamily="var(--font-display)">
-        Attention anatomy — block {layer}
+        Attention anatomy - block {layer}
       </text>
       <text x={30} y={60} fill="var(--text-2)" fontSize={11}>
         parallel heads: the 12 lanes run together in one computation, not sequentially
@@ -98,7 +98,7 @@ export default function AttentionLevel({
       {flow && (
         <g>
           <text x={40} y={660} fill="var(--brass)" fontSize={10} fontFamily="var(--font-mono)">
-            MEASURED — attention patterns for this block are captured in the current run (inspect any head above)
+            MEASURED - attention patterns for this block are captured in the current run (inspect any head above)
           </text>
         </g>
       )}

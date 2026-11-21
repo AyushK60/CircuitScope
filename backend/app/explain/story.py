@@ -1,7 +1,7 @@
 """Story functions: pure functions from stored result dicts
 to lists of claim objects.
 
-Contract for every claim object: {id, level, text, claim_type, evidence} —
+Contract for every claim object: {id, level, text, claim_type, evidence} -
 one entry per level (curious/student/expert) for each template instance.
 
 Rules (spec):

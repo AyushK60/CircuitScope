@@ -92,7 +92,7 @@ export default function ContinuationPanel({
               <a
                 key={s.step}
                 href={`#/explorer?text=${encodeURIComponent(s.input_so_far)}`}
-                title={`step ${s.step}: p=${s.chosen_prob} — click to inspect this exact prefix`}
+                title={`step ${s.step}: p=${s.chosen_prob} - click to inspect this exact prefix`}
                 style={{ color: "var(--accent)", textDecoration: "none" }}
               >
                 {s.chosen}

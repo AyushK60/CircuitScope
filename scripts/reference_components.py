@@ -1,7 +1,7 @@
 """Independent reference implementation of the exact per-component
 effects (Task 7), written SEPARATELY from the backend implementation.
 
-Uses raw Hugging Face transformers + PyTorch + stdlib only — no
+Uses raw Hugging Face transformers + PyTorch + stdlib only - no
 TransformerLens, no backend imports.
 
 For the first 3 usable prompts of a completed study it recomputes
@@ -245,7 +245,7 @@ def main() -> int:
             if q["template_id"] == p["template_id"] and q["id"] != p["id"]
         ]
         if pp["abl_mean"] is None or not family:
-            print(f"prompt {p['id']}: mean ablation skipped (no family) — matches backend: {pp['abl_mean'] is None}")
+            print(f"prompt {p['id']}: mean ablation skipped (no family) - matches backend: {pp['abl_mean'] is None}")
             continue
         fam_z: dict[int, list[torch.Tensor]] = {l: [] for l in range(N_LAYERS)}
         fam_mlp: dict[int, list[torch.Tensor]] = {l: [] for l in range(N_LAYERS)}

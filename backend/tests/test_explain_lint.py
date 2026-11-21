@@ -1,4 +1,4 @@
-"""Claim lint — banned words, readability limits, structure."""
+"""Claim lint - banned words, readability limits, structure."""
 
 from __future__ import annotations
 

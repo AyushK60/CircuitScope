@@ -485,10 +485,10 @@ export default function Sweeps({ health }: { health: Health | null }) {
                     {lensCurrent.stages.map((s) => (
                       <tr key={s.stage}>
                         <td>{s.stage}</td>
-                        <td>{s.D == null ? "—" : s.D.toFixed(3)}</td>
-                        <td>{s.prob_a == null ? "—" : s.prob_a.toFixed(4)}</td>
-                        <td>{s.prob_b == null ? "—" : s.prob_b.toFixed(4)}</td>
-                        <td>{s.top[0] ? `${s.top[0].token} (${s.top[0].prob.toFixed(3)})` : "—"}</td>
+                        <td>{s.D == null ? "-" : s.D.toFixed(3)}</td>
+                        <td>{s.prob_a == null ? "-" : s.prob_a.toFixed(4)}</td>
+                        <td>{s.prob_b == null ? "-" : s.prob_b.toFixed(4)}</td>
+                        <td>{s.top[0] ? `${s.top[0].token} (${s.top[0].prob.toFixed(3)})` : "-"}</td>
                       </tr>
                     ))}
                   </tbody>

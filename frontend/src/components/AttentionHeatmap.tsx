@@ -140,7 +140,7 @@ export default function AttentionHeatmap({
                 {k !== topAttended[topAttended.length - 1].k ? " · " : ""}
               </span>
             ))}
-            <span className="inspector-meta"> — measured, head {head}; the empty upper triangle is the causal mask</span>
+            <span className="inspector-meta"> - measured, head {head}; the empty upper triangle is the causal mask</span>
           </span>
           <button className="ghost" onClick={() => setSelectedQuery(null)} aria-label="Clear token selection">
             ✕

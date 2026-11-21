@@ -7,7 +7,7 @@ All three corruptions of each prompt (``swap``, ``third``, ``resample``) are
 asserted token-aligned with the clean prompt; misaligned draws are rejected and
 counted, never silently accepted.
 
-Deterministic given (n, seed) via ``random.Random(seed)`` — no global state,
+Deterministic given (n, seed) via ``random.Random(seed)`` - no global state,
 no numpy RNG here.
 """
 
@@ -143,7 +143,7 @@ def generate(n: int, seed: int) -> dict:
             schedule.append((t, "A" if (i // 3) % 2 == 0 else "B"))
             i += 1
 
-    # First pass: draw prompts (no corruptions yet) — resample needs the full set.
+    # First pass: draw prompts (no corruptions yet) - resample needs the full set.
     for idx, (template_id, s2_role) in enumerate(schedule):
         for attempt in range(MAX_DRAWS_PER_PROMPT):
             d = _draw(rng, words)

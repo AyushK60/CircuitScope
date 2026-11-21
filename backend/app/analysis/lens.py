@@ -3,7 +3,7 @@
 Question answered: "what would the model predict if it stopped after block i?"
 For each stage the residual at the final position is taken and the final
 LayerNorm + unembedding are applied EXACTLY as the model does them
-(biased-variance LN with the model's own epsilon, gamma/beta, then W_U —
+(biased-variance LN with the model's own epsilon, gamma/beta, then W_U -
 GPT-2 has no unembedding bias). This is a heuristic view: early-layer residual
 streams are not trained to be read by the unembedding, so early "predictions"
 are not what the model "was thinking".
@@ -23,7 +23,7 @@ LENS_NOTE = (
     "Heuristic view: the logit lens applies the final LayerNorm and unembedding "
     "to intermediate residual streams. Early layers are not trained to be read "
     "this way, so early-stage 'predictions' are not claims about what the model "
-    "was thinking — treat them as a coarse trace of how the output belief forms."
+    "was thinking - treat them as a coarse trace of how the output belief forms."
 )
 
 FINAL_TOLERANCE = 1e-3

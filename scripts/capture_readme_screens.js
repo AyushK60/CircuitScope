@@ -43,7 +43,7 @@ function frontendUrl() {
     console.log("saved", name);
   };
 
-  // 1. Landing — model ready, live prediction demo measured.
+  // 1. Landing - model ready, live prediction demo measured.
   // Smaller viewport than the other shots: keeps the PNG under ~300 KB.
   await page.setViewportSize({ width: 1024, height: 640 });
   await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded" });
@@ -51,12 +51,12 @@ function frontendUrl() {
   await save("readme_1_landing.png");
   await page.setViewportSize({ width: 1280, height: 800 });
 
-  // 2. Explorer — whole-model anatomy
+  // 2. Explorer - whole-model anatomy
   await page.goto(`${BASE}/#/explorer`, { waitUntil: "domcontentloaded" });
   await page.getByText("gpt2 · 12 blocks · 12 heads").waitFor({ timeout: 60000 });
   await save("readme_2_explorer.png");
 
-  // 3. Sweeps — run the real layer x position patching sweep, wait for the heatmap
+  // 3. Sweeps - run the real layer x position patching sweep, wait for the heatmap
   await page.goto(`${BASE}/#/sweeps`, { waitUntil: "domcontentloaded" });
   await page.getByRole("button", { name: "Run sweep" }).click();
   await page
@@ -64,7 +64,7 @@ function frontendUrl() {
     .waitFor({ timeout: 240000 });
   await save("readme_3_sweeps.png");
 
-  // 4. Report — generate the real Circuit Report. Wait for the LAST section
+  // 4. Report - generate the real Circuit Report. Wait for the LAST section
   // heading: sections render only once the report job is complete, so a
   // mid-run wait here would leave the job engine busy for later steps.
   await page.goto(`${BASE}/#/report`, { waitUntil: "domcontentloaded" });
@@ -74,7 +74,7 @@ function frontendUrl() {
     .waitFor({ timeout: 240000 });
   await save("readme_4_report.png");
 
-  // 5. Verify — run the first reference check (DLA + logit lens vs raw HF).
+  // 5. Verify - run the first reference check (DLA + logit lens vs raw HF).
   // Wait for the Cancel button first: the card may show a stored "Pass" from
   // an earlier run, and only a visible Cancel proves THIS check is running.
   await page.goto(`${BASE}/#/verify`, { waitUntil: "domcontentloaded" });
@@ -84,7 +84,7 @@ function frontendUrl() {
   await card.getByRole("status", { name: "Status: Pass" }).waitFor({ timeout: 240000 });
   await save("readme_5_verify.png");
 
-  // 6. Tour — first scene (real prediction), the tour generates its own report.
+  // 6. Tour - first scene (real prediction), the tour generates its own report.
   // reducedMotion keeps the walk manual (same trick as the e2e spec), so the
   // scene stays on screen until a human clicks Next.
   await page.emulateMedia({ reducedMotion: "reduce" });

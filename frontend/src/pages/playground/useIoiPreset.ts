@@ -2,8 +2,8 @@ import { useEffect } from "react";
 import { api } from "../../api/client";
 
 /** Task 3d: load the IOI task's default pair from the registry at mount and
- *  use it as the PRESET source. The rendered UI stays identical — the values
- *  match the hardcoded PRESET — and on any failure the fallback below keeps
+ *  use it as the PRESET source. The rendered UI stays identical - the values
+ *  match the hardcoded PRESET - and on any failure the fallback below keeps
  *  the page working offline-from-registry. */
 export function useIoiPreset(
   params: { hook?: string; position?: number },
@@ -31,6 +31,6 @@ export function useIoiPreset(
         if (s2 != null) setPosition((prev) => (params.position != null ? prev : s2));
       })
       .catch(() => {});
-    // params comes from useRef(...).current — stable for the page lifetime
+    // params comes from useRef(...).current - stable for the page lifetime
   }, [params, setClean, setCorrupted, setCandA, setCandB, setPosition]);
 }

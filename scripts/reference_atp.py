@@ -1,12 +1,12 @@
 """Independent reference implementation of attribution patching, written SEPARATELY from the backend implementation.
 
-Uses raw Hugging Face transformers + PyTorch only — no TransformerLens, no
+Uses raw Hugging Face transformers + PyTorch only - no TransformerLens, no
 backend imports.
 
 Reimplementation of AtP (denoising direction, metric D):
   - one clean pass captures per-head z (forward PRE-hook on
     transformer.h[L].attn.c_proj input, head h owns input rows
-    h*64:(h+1)*64 — GPT-2 Conv1D) and the MLP output (forward hook on
+    h*64:(h+1)*64 - GPT-2 Conv1D) and the MLP output (forward hook on
     transformer.h[L].mlp);
   - one corrupted pass with grad: a forward hook on transformer.wte returns
     output.detach().requires_grad_(True) so a graph exists (all parameters
@@ -24,7 +24,7 @@ Exits non-zero on mismatch.
 
 Usage:
   python scripts/reference_atp.py                # live backend on 127.0.0.1:8000
-      (runs a backend study with n_prompts=4, seed=13 — a few minutes)
+      (runs a backend study with n_prompts=4, seed=13 - a few minutes)
   python scripts/reference_atp.py --study-json FILE
       # compare against a saved study-results JSON instead (must contain
       # prompt_set.prompts and per_prompt[i].atp)

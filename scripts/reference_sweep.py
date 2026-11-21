@@ -1,7 +1,7 @@
 """Independent reference implementation of both patching sweep modes, written
 SEPARATELY from the backend implementation.
 
-Uses raw Hugging Face transformers + PyTorch forward hooks only — no
+Uses raw Hugging Face transformers + PyTorch forward hooks only - no
 TransformerLens, no backend imports.
 
 Reimplementation:

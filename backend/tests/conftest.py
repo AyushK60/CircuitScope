@@ -46,7 +46,7 @@ def ioi():
 # environment (found by running the fast subset):
 # - test_study.py: its fixture-less tests (exclusion rule, determinism, worker
 #   rejection) read the completed studies that only the module's own model
-#   tests leave in RUNNER — the module only makes sense as one model-marked
+#   tests leave in RUNNER - the module only makes sense as one model-marked
 #   unit.
 # - test_provenance.py::test_collect_has_all_keys asserts a real 40-hex HF
 #   model revision, which requires the downloaded weights to be cached.

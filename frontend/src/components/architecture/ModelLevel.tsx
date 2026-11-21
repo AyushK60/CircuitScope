@@ -42,7 +42,7 @@ export default function ModelLevel({
       {/* stage 1: input */}
       {stageNum(46, "1", "input")}
       <text x={modX} y={40} fill="var(--text-2)" fontSize={11}>
-        {flow ? `your sentence — ${flow.tokens.length} tokens received by the model` : "your sentence"}
+        {flow ? `your sentence - ${flow.tokens.length} tokens received by the model` : "your sentence"}
       </text>
       <TokenStrip flow={flow} y={54} x={modX} markedPosition={intervention?.position} />
 
@@ -51,7 +51,7 @@ export default function ModelLevel({
       <StageBand y={132} w={modW} x={modX} title="Tokenizer" sub={`${meta.tokenizer_class} · byte-level BPE · vocab ${meta.d_vocab.toLocaleString()}`} />
       <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${modX + modW / 2} 168 L ${modX + modW / 2} 196`} />
 
-      {/* stage 3: embeddings — two real tables converging into the stream */}
+      {/* stage 3: embeddings - two real tables converging into the stream */}
       {stageNum(236, "3", "embed")}
       <StageBand y={200} w={modW / 2 - 10} x={modX} title="Token embeddings" sub={`W_E · ${meta.d_vocab}→${meta.d_model}`} />
       <StageBand y={200} w={modW / 2 - 10} x={modX + modW / 2 + 10} title="Position embeddings" sub={`W_pos · ${meta.n_ctx}×${meta.d_model}`} />
@@ -73,7 +73,7 @@ export default function ModelLevel({
       </text>
 
       {/* stage 4: the 12 real blocks, in execution order */}
-      {stageNum(BLOCK_Y0 + 20, "4", `${meta.n_layers} transformer blocks — in order`)}
+      {stageNum(BLOCK_Y0 + 20, "4", `${meta.n_layers} transformer blocks - in order`)}
       {Array.from({ length: meta.n_layers }, (_, l) => {
         const by = BLOCK_Y0 + l * BLOCK_PITCH;
         const norm = flow?.blocks[l]?.resid_norm_mean;
@@ -165,7 +165,7 @@ export default function ModelLevel({
         );
       })}
 
-      {/* stage 5: final LN — strictly after all blocks */}
+      {/* stage 5: final LN - strictly after all blocks */}
       {stageNum(BLOCK_Y0 + meta.n_layers * BLOCK_PITCH + 52, "5", "final normalization")}
       <StageBand y={BLOCK_Y0 + meta.n_layers * BLOCK_PITCH + 66} w={modW} x={modX} title="Final LayerNorm" sub={`ln_final · normalizes the stream once, after every block`} />
       <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${busX} ${BLOCK_Y0 + meta.n_layers * BLOCK_PITCH + 30} C ${busX} ${BLOCK_Y0 + meta.n_layers * BLOCK_PITCH + 90}, ${modX - 30} ${BLOCK_Y0 + meta.n_layers * BLOCK_PITCH + 90}, ${modX + modW / 2} ${BLOCK_Y0 + meta.n_layers * BLOCK_PITCH + 66}`} />

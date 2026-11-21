@@ -2,7 +2,7 @@
 // Architecture fixed by spec: 4 inputs → 6 → 6 → 5 → 3 outputs.
 // Deterministic documented initial weights (He initialization, seed 1234).
 // Hidden activation: ReLU. Output: raw logits + numerically stable softmax.
-// This is an educational simulation — it is NOT GPT-2 and its outputs are
+// This is an educational simulation - it is NOT GPT-2 and its outputs are
 // abstract classes, not real-world predictions.
 
 export const LAYER_SIZES = [4, 6, 6, 5, 3] as const;

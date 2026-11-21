@@ -188,7 +188,7 @@ describe("VerificationCard statuses", () => {
 
   it("shows progress and a cancel control while running", () => {
     renderCard(entry({}), true);
-    expect(screen.getByText(/50% — running the reference script/)).toBeTruthy();
+    expect(screen.getByText(/50% - running the reference script/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
   });
 });

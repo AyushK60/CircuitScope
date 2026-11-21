@@ -153,7 +153,7 @@ def test_test_job_type_not_in_production_registry(sleep_test_type):
 
 def test_unknown_type_in_run_fails_job_and_releases_worker():
     """A job whose type disappeared from the registry must end 'failed' with a
-    clear error — not stay 'running' forever (which would block all future
+    clear error - not stay 'running' forever (which would block all future
     jobs). Exercises _run directly so the lookup path is deterministic."""
     runner = ExperimentRunner()
     job = JobRecord(job_id="ghost", config={}, type="vanishing_type")

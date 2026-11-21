@@ -462,7 +462,7 @@ export default function Report({ health }: { health: Health | null }) {
               <div className="rp-field">
                 <label htmlFor="report-study">Saved study (optional)</label>
                 <select id="report-study" value={studyJobId} onChange={(e) => setStudyJobId(e.target.value)} disabled={running}>
-                  <option value="">None — single prompt only</option>
+                  <option value="">None - single prompt only</option>
                   {studies.map((s) => (
                     <option key={s.id} value={s.id}>
                       study {s.id} ({String((s.config as Record<string, unknown>).n_prompts ?? "?")} prompts)

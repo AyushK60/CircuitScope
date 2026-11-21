@@ -128,14 +128,14 @@ def execute_experiment(
         )
     if norm["clean_text"] == norm["corrupted_text"]:
         raise ExperimentValidationError(
-            "clean and corrupted prompts are identical — the patch would have no meaningful contrast. "
+            "clean and corrupted prompts are identical - the patch would have no meaningful contrast. "
             "Provide a corrupted variant (e.g. swap the subject) as in the John/Mary preset."
         )
     seq = toks_clean.shape[1]
     if any(p >= seq for p in norm["positions"]):
         raise ExperimentValidationError(f"position out of range for sequence length {seq}")
 
-    report(0.05, "validated — starting clean run")
+    report(0.05, "validated - starting clean run")
     t0 = time.perf_counter()
     check_cancel()
     logits_clean, clean_cache = bridge.run_with_cache(

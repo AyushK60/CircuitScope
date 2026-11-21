@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 /**
  * Diverging heatmap for patching-sweep grids (Recovery centred at 0).
- * Values come verbatim from the sweep API response — no invented numbers.
+ * Values come verbatim from the sweep API response - no invented numbers.
  * Hover/focus a cell for the exact Recovery and D_patched; "Show numbers"
  * toggles an accessible <table> of the same values.
  */
@@ -186,7 +186,7 @@ export default function SweepHeatmap({
             <strong>
               {rowLabels[hover.r]} / {colLabels[hover.c]}
             </strong>
-            {" — "}
+            {" - "}
             Recovery {fmt(hovered.recovery ?? NaN, 4)} · D_patched {fmt(hovered.d ?? NaN, 4)}
           </span>
         </div>

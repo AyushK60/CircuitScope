@@ -1,17 +1,17 @@
 """Template registry for generated claims.
 
-All generated text lives here as data — never scattered f-strings at runtime.
+All generated text lives here as data - never scattered f-strings at runtime.
 Each template declares:
   - its claim_type ("measured" | "interpretation" | "caveat"),
   - the value placeholders it needs,
   - its text at all three levels (curious / student / expert).
 
 Two syntaxes inside template text:
-  - ``$name``          — a value placeholder, filled from a values dict by
+  - ``$name``          - a value placeholder, filled from a values dict by
                          ``fill_template`` (a tiny regex substitution; Python's
                          str.format cannot be used because the glossary markers
                          below would be parsed as format fields).
-  - ``{{term:id|display}}`` — a glossary-term marker, returned to the frontend
+  - ``{{term:id|display}}`` - a glossary-term marker, returned to the frontend
                          intact so it can render a tooltip; ``lint`` strips it
                          before counting words.
 
@@ -64,7 +64,7 @@ TEMPLATES: dict[str, dict] = {
         "claim_type": "measured",
         "placeholders": ["top_token", "top_pct"],
         "levels": {
-            "curious": 'The model\'s top next token is "$top_token" — about a $top_pct chance.',
+            "curious": 'The model\'s top next token is "$top_token" - about a $top_pct chance.',
             "student": 'The model\'s top next {{term:token|token}} is "$top_token", with a probability of $top_pct.',
             "expert": 'Top next token: "$top_token" (probability $top_pct at the final position).',
         },
@@ -185,7 +185,7 @@ TEMPLATES: dict[str, dict] = {
         "placeholders": ["err", "tol"],
         "levels": {
             "curious": "The direct pushes add up to the model's real score gap within $err (tolerance $tol).",
-            "student": "The per-component direct pushes sum to the model's real score gap within $err (tolerance $tol) — a check that the arithmetic is exact, not that any head is 'the' cause.",
+            "student": "The per-component direct pushes sum to the model's real score gap within $err (tolerance $tol) - a check that the arithmetic is exact, not that any head is 'the' cause.",
             "expert": "DLA reconciliation: |Σ terms + β·w − D| = $err ≤ $tol (telescoping identity of the linear read).",
         },
     },

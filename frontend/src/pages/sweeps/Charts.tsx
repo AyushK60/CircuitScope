@@ -78,7 +78,7 @@ export function LensChart({ lens }: { lens: LensResult }) {
               <span className="sw-lens-bar">
                 <i className={hit ? "hit" : ""} style={{ height: `${Math.max(2, p * 100)}%` }} />
               </span>
-              <span className="sw-lens-tok">{t ? t.token.trim() || "␣" : "—"}</span>
+              <span className="sw-lens-tok">{t ? t.token.trim() || "␣" : "-"}</span>
               <span className="sw-lens-stage">{short(s.stage)}</span>
             </div>
           );

@@ -1,7 +1,7 @@
 """Independent reference implementation of the IOI activation patch.
 
-Uses raw Hugging Face transformers + PyTorch forward hooks only — no
-TransformerLens — so the backend's patched-run numbers can be verified against
+Uses raw Hugging Face transformers + PyTorch forward hooks only - no
+TransformerLens - so the backend's patched-run numbers can be verified against
 a genuinely separate code path.
 
 Patching semantics verified against the backend:

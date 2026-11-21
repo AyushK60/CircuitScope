@@ -110,7 +110,7 @@ def capture_flow(text: str) -> dict:
         blocks.append(
             {
                 "layer": l,
-                # per-token residual norm, then sequence mean — labeled aggregation
+                # per-token residual norm, then sequence mean - labeled aggregation
                 "resid_norm_per_token": [round(float(x), 2) for x in resid.norm(dim=-1).tolist()],
                 "resid_norm_mean": round(float(resid.norm(dim=-1).mean()), 2),
                 "attention": [
@@ -198,7 +198,7 @@ def continue_text(
         "mode": mode,
         "params": {"temperature": temperature, "top_k": top_k, "seed": seed},
         "decoding": (
-            "greedy (argmax) — deterministic, no sampling"
+            "greedy (argmax) - deterministic, no sampling"
             if mode == "greedy"
             else f"sampling · temperature {temperature} · top_k {top_k or 'off'} · seed {seed if seed is not None else 0}"
         ),
@@ -230,7 +230,7 @@ def score_question_candidates(
     Constructs a documented prompt template ending in an answer prefix, then
     scores every candidate by conditional token log-probability (teacher
     forcing). Multi-token candidates use the SUM of token log-probs under the
-    same prompt prefix — never just the first token. Also reports the first-
+    same prompt prefix - never just the first token. Also reports the first-
     token probability and the length-normalized mean log-prob so the three
     metrics can be distinguished. These are continuation scores, NOT a claim
     that GPT-2 answers questions correctly.

@@ -1,4 +1,4 @@
-# CONCEPTS_STAGE2 — patching sweeps, DLA, logit lens (plain language)
+# CONCEPTS_STAGE2 - patching sweeps, DLA, logit lens (plain language)
 
 Written for a smart non-expert. Every formula here is exactly what the code
 computes; every number in the app comes from running the real model.
@@ -6,7 +6,7 @@ computes; every number in the app comes from running the real model.
 ## 1. The residual stream is a shared whiteboard
 
 GPT-2 processes a sentence token by token, but internally each token position
-carries a 768-number vector called the **residual stream** — think of it as one
+carries a 768-number vector called the **residual stream** - think of it as one
 row of a shared whiteboard. Each of the 12 blocks reads the row and *adds*
 something to it:
 
@@ -29,7 +29,7 @@ so the whole final row is the sum of about 171 pieces: 2 embeddings, 144 heads,
 rounding), and it is what makes the two techniques below possible.
 
 At the very end, the row goes through a final LayerNorm and then a big matrix
-(`W_U`) that turns 768 numbers into 50,257 scores — one per vocabulary token.
+(`W_U`) that turns 768 numbers into 50,257 scores - one per vocabulary token.
 We compare two tokens, A (" Mary") and B (" John"):
 
 ```
@@ -40,11 +40,11 @@ Positive D means the model scores A above B at that position. D for the IOI
 clean prompt is about 2.51; for the corrupted prompt ("Mary gave…"), about
 −4.18.
 
-## 2. Direct logit attribution (DLA) — who wrote which bit of the answer?
+## 2. Direct logit attribution (DLA) - who wrote which bit of the answer?
 
 **Analogy.** After the essay is finished, attribute each sentence of the final
 draft to whoever wrote it on the whiteboard. It tells you who *directly* wrote
-what — not who prompted whom.
+what - not who prompted whom.
 
 The math is one line. For any component's output `c` (a 768-vector):
 
@@ -74,12 +74,12 @@ layers* are invisible. That is why DLA is always shown as a partial view, and
 why it is cross-checked against patching (which is causal).
 
 *You should be able to defend:* "Why can you attribute logits to individual
-heads at all?" — Because the residual stream is literally a sum of their
+heads at all?" - Because the residual stream is literally a sum of their
 outputs, and (apart from the LayerNorm's linear pieces) the final logits are a
-linear read of that sum. "What does DLA miss?" — Indirect paths through later
+linear read of that sum. "What does DLA miss?" - Indirect paths through later
 layers; a small DLA does not mean a small causal role.
 
-## 3. Patching sweeps — swap one note between two students
+## 3. Patching sweeps - swap one note between two students
 
 **Analogy.** Two students solve the same problem with one detail changed (the
 IOI clean and corrupted prompts). You copy one whiteboard note from the clean
@@ -103,24 +103,24 @@ contrast, and if that contrast is near zero the sweep refuses to run rather
 than show noise.
 
 Honest caveats the UI carries: patching is causal evidence about *the patch*,
-not proof that a component is "the" member of "the" circuit — GPT-2's IOI
+not proof that a component is "the" member of "the" circuit - GPT-2's IOI
 circuit is redundant, so importance can be distributed. And a single-cell
 Recovery of ~0 does not mean the component does nothing (the task may have
 alternatives that took over).
 
-*You should be able to defend:* "Why denoising and not the reverse?" — The
+*You should be able to defend:* "Why denoising and not the reverse?" - The
 metric definition requires a direction; we state ours explicitly and keep it
 consistent (the Playground has always used this direction). "Why is a low
-Recovery cell not proof of irrelevance?" — Because other components can
+Recovery cell not proof of irrelevance?" - Because other components can
 compensate, and because Recovery depends on the metric and corruption choice.
 
-## 4. Logit lens — peek at the draft after every paragraph
+## 4. Logit lens - peek at the draft after every paragraph
 
 **Analogy.** After each block, apply the *final* LayerNorm and unembedding to
 the current whiteboard row: "if the model had to answer right now, what would
 it say?"
 
-The math reuses the model's own readout exactly — same LayerNorm (biased
+The math reuses the model's own readout exactly - same LayerNorm (biased
 variance, the model's own epsilon, learned gain and bias), same `W_U`, no
 invented parameters:
 
@@ -130,19 +130,19 @@ logits_after_block_i = LN(r_i) @ W_U
 
 The app shows, per stage: D, P(A), P(B), and the top-5 tokens with
 probabilities. A built-in identity check confirms the last stage (block 11)
-reproduces the model's real final logits — so the lens is a *view* of the same
+reproduces the model's real final logits - so the lens is a *view* of the same
 model, not a second model.
 
 **The caveat (always shown):** the logit lens is a heuristic. Early-layer
-residual streams are not trained to be read by the unembedding — nobody trains
-block 2's output to be decodable — so early "predictions" are a rough trace of
+residual streams are not trained to be read by the unembedding - nobody trains
+block 2's output to be decodable - so early "predictions" are a rough trace of
 how the output belief forms, not what the model "was thinking". Expect early
 stages to look like noise or generic text; the interesting structure is usually
 in the later blocks (for IOI, the correct token dominates from block 9).
 
-*You should be able to defend:* "Is the lens causal evidence?" — No. It is a
+*You should be able to defend:* "Is the lens causal evidence?" - No. It is a
 readout of the residual stream at one point in time, nothing was intervened
-on. "Why does the final stage match the model exactly?" — Because block 11's
+on. "Why does the final stage match the model exactly?" - Because block 11's
 output is exactly what the real model feeds to ln_f + W_U; the lens is the
 same computation.
 
@@ -154,7 +154,7 @@ same computation.
 
 Where DLA and patching agree (e.g. for the IOI name-mover heads, our measured
 top DLA contributors at layers 9–10), the evidence is strong. Where they
-disagree, the honest conclusion is "the direct view is incomplete here" — that
+disagree, the honest conclusion is "the direct view is incomplete here" - that
 disagreement is exactly what the later agreement study later will
 quantify. Nothing in the app claims causation from the lens or from attention
 patterns.

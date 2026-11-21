@@ -74,7 +74,7 @@ PyTorch 2.15.0+cpu · TransformerLens 4.3.0 TransformerBridge · GPT-2 Small (12
 
 ## Task registry
 
-Each task (e.g. IOI) is a data file in `examples/tasks/*.json` — prompts,
+Each task (e.g. IOI) is a data file in `examples/tasks/*.json` - prompts,
 candidate tokens, positions of interest, recommended hooks, source citation.
 Adding a task needs no code change. `GET /api/tasks` lists them (with any
 load errors); `GET /api/tasks/{id}` returns the task plus validation performed
@@ -97,7 +97,7 @@ milestones (0.05 / 0.2 / 0.5 / 0.9 / 1.0); live job status JSON carries
 ## Sweeps, DLA, logit lens
 
 - **Sweeps** (`POST /api/sweeps` → job type `"sweep"`, poll
-  `GET /api/experiments/{id}`): denoising only — clean activations are copied
+  `GET /api/experiments/{id}`): denoising only - clean activations are copied
   into the corrupted run, stated in every result as
   `direction: "clean -> corrupted (denoising)"`. Modes: `layer_position`
   (12 × seq grid of `blocks.{L}.hook_out` at one position) and `layer_head`
@@ -152,14 +152,13 @@ Independent cross-checks (raw HF transformers, no backend imports):
   interpolation) central-difference matches `AtP_D` (Pearson > 0.999, tested).
   Known limitation, stated everywhere it is shown: AtP is first-order and
   unreliable under saturated attention.
-- **Statistics** (`analysis/stats.py`): hand-rolled numpy (no scipy) —
+- **Statistics** (`analysis/stats.py`): hand-rolled numpy (no scipy) -
   average-rank Spearman (constant input → `None`), percentile bootstrap CI,
   permutation null, top-k overlap + random expectation k·k/144.
 - **Study job** (`experiments/study.py`, `POST /api/study`): pipeline per
-  prompt — clean cache, 3 corrupted baselines, exact denoising for 3
+  prompt - clean cache, 3 corrupted baselines, exact denoising for 3
   corruptions × both metrics, AtP (swap/D), DLA on the clean run, then a
-  second pass for zero/mean ablation. Pre-registered analysis (PAPER_NOTES
-  §4b, committed before any full run): exclusion rule
+  second pass for zero/mean ablation. Pre-registered analysis (fixed before any full run): exclusion rule
   `|D_clean − D_corr| < 0.5` per (prompt, corruption), model accuracy =
   fraction with `D_clean > 0` (headline numbers repeated on that subset),
   RQ1 Spearman + bootstrap CI + permutation null, RQ2 pairwise Spearman +
@@ -177,7 +176,7 @@ Independent cross-checks (raw HF transformers, no backend imports):
 
 `run_patched(corrupted_text, clean_cache, hook, positions, heads)`:
 
-1. Clone the clean-run tensor (`clean_cache[hook].clone()`) — baselines immutable.
+1. Clone the clean-run tensor (`clean_cache[hook].clone()`) - baselines immutable.
 2. Register a forward hook on the exact hook point that writes
    `z[0, pos, :] = src[0, pos, :]` (per-head for 4-D `hook_z`).
 3. Run the corrupted prompt through the real model; hooks auto-reset afterward.
@@ -205,18 +204,18 @@ D_patched 1.9426, Recovery 0.9148.
 New backend package `backend/app/explain/` (all pure text machinery; no model
 access, no LLM):
 
-- `thresholds.py` — every qualitative boundary in one place: recovery buckets
+- `thresholds.py` - every qualitative boundary in one place: recovery buckets
   (0.8 / 0.4 / 0.1 / −0.1), DLA magnitude buckets (1.0 / 0.3 raw logit units),
   the live trust-check tolerances (final-cell recovery 1e-3, last-block
   unchanged 1e-4, baseline contrast 1e-3) and the curious readability limits
   (mean ≤ 18 words, longest ≤ 28, Flesch ≥ 60). Formatting helpers
   `fmt_num` / `fmt_pct` / `ordinal` render "n/a" for undefined values.
-- `templates.py` — every generated sentence as data: one template per claim
+- `templates.py` - every generated sentence as data: one template per claim
   with its `claim_type`, its declared placeholders and its text at all three
   levels (curious / student / expert). Placeholders use `$name` (filled by a
   strict regex substitution; missing ones raise); glossary terms use
   `{{term:id|display}}` markers, validated against the glossary at import.
-- `story.py` — pure functions from compact stored result dicts to claim
+- `story.py` - pure functions from compact stored result dicts to claim
   objects `{id, level, text, claim_type, evidence}`. Facts are picked by
   declared deterministic procedures (largest lens jump; argmax recovery over
   early/late block rows excluding the identity cell; top-3/top-10 by value
@@ -224,11 +223,11 @@ access, no LLM):
   (`compact_sweep`, `compact_dla`, `compact_lens`, `compact_study`,
   `compact_prediction`, `compact_reference`) build the same dicts stored in
   `sections[].data`, so every evidence path resolves.
-- `lint.py` — the claim lint used by tests AND at runtime: banned
+- `lint.py` - the claim lint used by tests AND at runtime: banned
   words/phrases at all levels (principle 4), glossary-marker validation, and
   the curious-only readability limits + banned-idiom list. A report/export
   that lints badly fails honestly (500/failed job) instead of shipping.
-- `glossary.py` — loader for the shared `examples/glossary.json`.
+- `glossary.py` - loader for the shared `examples/glossary.json`.
 
 New job type `"report"` (`backend/app/experiments/report.py`), registered from
 `routes.py` like sweep/study. Steps: prediction (one forward pass, top token +

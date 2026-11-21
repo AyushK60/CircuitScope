@@ -1,4 +1,4 @@
-"""Glossary consistency — backend side.
+"""Glossary consistency - backend side.
 
 - every term has all three levels with non-empty text
 - curious definitions pass the principle-7 lint (banned words + readability)

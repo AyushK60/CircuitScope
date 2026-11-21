@@ -8,7 +8,7 @@ export default function AnalogyBox({
   return (
     <aside className="analogy-box" aria-label="Analogy">
       <p className="analogy-title">
-        Think of it like {analogy.title} — <strong>an analogy, not a description of the model</strong>
+        Think of it like {analogy.title} - <strong>an analogy, not a description of the model</strong>
       </p>
       <p>{analogy.text}</p>
       <p className="analogy-breaks">

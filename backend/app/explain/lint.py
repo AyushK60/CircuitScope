@@ -181,7 +181,7 @@ def lint_markdown(md: str, level: str = "curious") -> list[str]:
     """Lint the exported Markdown. Banned words apply to every prose line
     (headings and table rows excluded); the curious readability limits apply
     to the generated claim bullets ("- [claim_type] ..."), which are the only
-    generated sentences in the document — structural metadata (provenance
+    generated sentences in the document - structural metadata (provenance
     hashes, evidence-tier labels, fixed trust-panel lines) is not generated
     claim text."""
     problems: list[str] = []

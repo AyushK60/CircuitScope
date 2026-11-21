@@ -34,7 +34,7 @@ export default function QuestionPanel({
       <h2>Question &amp; Candidate Explorer</h2>
       <p className="inspector-meta" style={{ marginBottom: "0.8rem" }}>
         A context, a question, and candidate answers. GPT-2 is a next-token model, <strong>not</strong> a
-        question-answering assistant — this compares text-continuation scores under a fixed prompt
+        question-answering assistant - this compares text-continuation scores under a fixed prompt
         template. Multi-token candidates are scored by the sum of their conditional token
         log-probabilities, never by the first token alone.
       </p>
@@ -89,16 +89,16 @@ export default function QuestionPanel({
                 Measured preference by total log-probability:{" "}
                 <strong>{JSON.stringify(qResult.preferred_by_total_logprob)}</strong>.{" "}
                 {qResult.length_warning
-                  ? "⚠ candidates have different token lengths — compare mean log-P as well; raw totals favor longer candidates."
+                  ? "⚠ candidates have different token lengths - compare mean log-P as well; raw totals favor longer candidates."
                   : "Candidates have equal token lengths; total and mean log-P rank them identically."}{" "}
-                These are continuation scores — not a claim that GPT-2 answers questions correctly.
+                These are continuation scores - not a claim that GPT-2 answers questions correctly.
               </p>
             </>
           )}
           {!qResult && (
             <div className="state-banner info">
               Enter a context, question and candidates, then score. Scores are conditional log-probabilities
-              under the fixed template — see the method note in the result.
+              under the fixed template - see the method note in the result.
             </div>
           )}
         </div>

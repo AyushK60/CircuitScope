@@ -25,7 +25,7 @@ export default function BlockLevel({
         Inside transformer block {layer}
       </text>
       <text x={30} y={60} fill="var(--text-2)" fontSize={11}>
-        GPT-2 pre-LN order — verified against the running model · hooks: blocks.{layer}.*
+        GPT-2 pre-LN order - verified against the running model · hooks: blocks.{layer}.*
       </text>
 
       {/* residual rails */}
@@ -52,7 +52,7 @@ export default function BlockLevel({
       <StageBand x={cx} y={152} w={bw} title="LayerNorm 1" sub={`blocks.${layer}.ln1 · feeds attention only`} />
       <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${cx + bw / 2} 192 L ${cx + bw / 2} 216`} />
 
-      {/* attention module — opens level 3 */}
+      {/* attention module - opens level 3 */}
       <g
         className="arch-node"
         onClick={onOpenAttention}

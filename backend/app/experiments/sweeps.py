@@ -1,7 +1,7 @@
 """Patching sweeps as a registered job type ("sweep").
 
 Two modes, both denoising (clean activations are copied into the corrupted
-run, as in the existing Playground — this direction is fixed and reported in
+run, as in the existing Playground - this direction is fixed and reported in
 every result):
 
 - ``layer_position``: for layer L in 0..11 and position p in 0..seq-1, patch

@@ -46,7 +46,7 @@ export default function Explorer({ health }: { health: Health | null }) {
 
   const meta: ModelMeta | null = health?.model_loaded ? health.model : null;
   const ready = meta !== null;
-  // the flow capture holds every layer's attention for the same run — derive
+  // the flow capture holds every layer's attention for the same run - derive
   // the displayed pattern from it so the heatmap can never go stale when the
   // user navigates to a different block
   const attentionForLayer = useMemo(() => {
@@ -278,7 +278,7 @@ function InspectorConsole({
       <>
         <h3>Measured residual stream</h3>
         <p className="inspector-meta">
-          L2 norm of the residual stream after each block, averaged over tokens — from the real captured
+          L2 norm of the residual stream after each block, averaged over tokens - from the real captured
           run. Click a bar to open that block.
         </p>
         <ResidNormAcrossLayers flow={flow} onSelectLayer={onLayer} />
@@ -338,7 +338,7 @@ function InspectorConsole({
         <h3 style={{ marginTop: "1rem" }}>Select a head</h3>
         <HeadGrid nHeads={meta.n_heads} selected={head} onSelect={onHead} />
         <p className="inspector-meta" style={{ marginTop: "0.6rem" }}>
-          An attention pattern is a descriptive measurement — where each query token distributes its
+          An attention pattern is a descriptive measurement - where each query token distributes its
           attention. It is not proof of what the head causes; that requires the Playground interventions.
         </p>
       </>
@@ -358,7 +358,7 @@ function InspectorConsole({
         <dt>Hook identifier</dt>
         <dd>blocks.{layer}.attn.hook_pattern</dd>
         <dt>Tensor shape</dt>
-        <dd>{attention ? attention.shape.join(" × ") : "—"} (heads × query × key)</dd>
+        <dd>{attention ? attention.shape.join(" × ") : "-"} (heads × query × key)</dd>
         <dt>Displayed slice</dt>
         <dd>head {head}, all positions (unreduced)</dd>
         <dt>Value scale</dt>

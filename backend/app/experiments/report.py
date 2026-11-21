@@ -1,4 +1,4 @@
-"""The "report" job type — the Circuit Report.
+"""The "report" job type - the Circuit Report.
 
 Pipeline (progress reported per step): prediction (clean prompt, candidates)
 -> logit lens -> layer x position sweep -> layer x head sweep -> DLA (clean)
@@ -6,7 +6,7 @@ Pipeline (progress reported per step): prediction (clean prompt, candidates)
 validated at submit time -> 422) -> story generation -> claim lint.
 
 Every sentence is a template from app.explain filled with measured values;
-``lint_claims`` runs at the end — a lint failure fails the job honestly
+``lint_claims`` runs at the end - a lint failure fails the job honestly
 (experiment error), it never ships bad text.
 
 Results contain sections (id, title, question, claims, compact data,
@@ -704,7 +704,7 @@ def run_report(cfg: dict, ctx: JobContext) -> dict:
             "report lint failed; refusing to ship generated text: " + "; ".join(problems[:10])
         )
 
-    ctx.report(0.97, "lint ok — assembling results")
+    ctx.report(0.97, "lint ok - assembling results")
     prov = collect_provenance()
     return {
         "job_type": "report",
@@ -771,7 +771,7 @@ def export_markdown(results: dict, level: str = "curious") -> str:
             for c in t.get("checks") or []:
                 tol = f" (tolerance {c['tolerance']})" if c.get("tolerance") is not None else ""
                 status = "ok" if c["ok"] else "**FAILED**"
-                lines.append(f"- Check: {c['label']}: {c['value']}{tol} — {status}")
+                lines.append(f"- Check: {c['label']}: {c['value']}{tol} - {status}")
             for w in t.get("warnings") or []:
                 lines.append(f"- Warning: {w}")
             for n in t.get("not_shown") or []:
@@ -779,7 +779,7 @@ def export_markdown(results: dict, level: str = "curious") -> str:
             lines.append("")
         if s.get("analogy"):
             a = s["analogy"]
-            lines.append(f"> Think of it like {a['title']} — an analogy, not a description of the model.")
+            lines.append(f"> Think of it like {a['title']} - an analogy, not a description of the model.")
             lines.append(">")
             lines.append(f"> {a['text']}")
             lines.append(">")

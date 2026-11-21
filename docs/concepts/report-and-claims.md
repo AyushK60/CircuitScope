@@ -1,4 +1,4 @@
-# concepts — how the Circuit Report is written
+# concepts - how the Circuit Report is written
 
 The Report page turns measurements into sentences. This note explains the
 machinery, its guarantees, and its limits. Companion to `docs/ARCHITECTURE.md`.
@@ -11,14 +11,14 @@ Every generated sentence is a claim object:
 { id, level, text, claim_type, evidence }
 ```
 
-- `level` — one of `curious`, `student`, `expert`. Each claim exists at all
+- `level` - one of `curious`, `student`, `expert`. Each claim exists at all
   three levels; the frontend renders the selected one.
-- `claim_type` — one of:
+- `claim_type` - one of:
   - **measured**: a number or comparison taken from the data
     (`answer.gap`, `words.early`, `study.atp`, ...);
   - **interpretation**: a hedged reading of the data (`words.procedure`);
   - **caveat**: a fixed limitation (`limits.*`, the lens heuristic note).
-- `evidence` — the data paths used, e.g. `["sweep.recovery[9][6]",
+- `evidence` - the data paths used, e.g. `["sweep.recovery[9][6]",
   "procedure: ..."]`. Paths resolve against the section's compact `data`
   object; the frontend's "where does this come from?" disclosure re-resolves
   and displays them next to their values. Fixed statements that are not data
@@ -27,7 +27,7 @@ Every generated sentence is a claim object:
 
 Guarantee: no free text is written at runtime. `story.py` picks facts by
 declared deterministic procedures and calls `fill_template`, which raises if a
-placeholder is missing — a template can never silently render with a gap.
+placeholder is missing - a template can never silently render with a gap.
 
 ## 2. Where the procedures are declared
 
@@ -41,7 +41,7 @@ evidence list of every claim that uses them:
 | `parts.recovery_top.*` | top-3 heads by recovery value; ties → index order |
 | `parts.dla_top.*` | top-3 heads by DLA value (descending); ties → index order |
 | `paper.*` | top-10 heads by recovery (ties → index), counted against the reference groups; missing groups report the best rank of their heads in the full 144 |
-| `study.overlap_*` | top-10 overlap recomputed from stored `per_prompt` data (prompt-averaged Rec_D[swap] vs AtP/DLA, excluded pairs dropped) — the one new computation, declared as an extra check |
+| `study.overlap_*` | top-10 overlap recomputed from stored `per_prompt` data (prompt-averaged Rec_D[swap] vs AtP/DLA, excluded pairs dropped) - the one new computation, declared as an extra check |
 
 The clock and RNG are never read. Same stored data → same sentences.
 
@@ -70,7 +70,7 @@ proof, understands, knows, thinks, reasons, decides, causes* (whole word) and
 the phrases *responsible for*, *is the reason*, *explains why*. Causal-sounding
 sentences must name the intervention ("in this test, copying X changed Y by
 Z"). The list lives in `backend/app/explain/banned_words.py` and is enforced by
-`lint.py` at generation time — a report job that lints badly fails instead of
+`lint.py` at generation time - a report job that lints badly fails instead of
 shipping.
 
 At the `curious` level a banned-idiom list (same module) also applies.
@@ -120,7 +120,7 @@ Each section's `trust.checks` is computed from the stored data at report time
 - **study_exclusions_recount** (how_sure): exclusion counts recomputed from
   stored per-prompt baselines match the stored summary (mismatch == 0).
 
-A failed check is displayed in red with its number and the word FAILED —
+A failed check is displayed in red with its number and the word FAILED -
 colour is never the only signal.
 
 ## 8. Honest disagreement with the paper

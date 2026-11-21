@@ -46,7 +46,7 @@ def _pearson(r: np.ndarray, s: np.ndarray) -> float:
 
 def pearson(x, y) -> float | None:
     """Pearson correlation. Returns None when either input is constant
-    (correlation undefined) or the inputs are empty — never NaN."""
+    (correlation undefined) or the inputs are empty - never NaN."""
     a = np.asarray(x, dtype=float)
     b = np.asarray(y, dtype=float)
     if a.ndim != 1 or b.ndim != 1 or a.shape != b.shape:
@@ -60,7 +60,7 @@ def pearson(x, y) -> float | None:
 
 def spearman(x, y) -> float | None:
     """Spearman rank correlation (average ranks). Returns None when either
-    input is constant (correlation undefined) — never NaN."""
+    input is constant (correlation undefined) - never NaN."""
     rx = rankdata_average(x)
     ry = rankdata_average(y)
     if float((rx == rx[0]).all()) or float((ry == ry[0]).all()):

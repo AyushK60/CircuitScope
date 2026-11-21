@@ -90,7 +90,7 @@ export default function App() {
       {route === "tour" && <Tour health={health} />}
 
       <footer className="site-footer">
-        CircuitScope — a local-first neural network observatory. GPT-2 Small runs entirely on this machine;
+        CircuitScope - a local-first neural network observatory. GPT-2 Small runs entirely on this machine;
         every displayed value comes from a real inference or intervention.
       </footer>
     </>

@@ -65,7 +65,7 @@ export default function VerificationCard({
             {running ? (
               <span className="vf-run">
                 <span role="status">
-                  {Math.round(progress * 100)}% — {progressMessage || "running"}
+                  {Math.round(progress * 100)}% - {progressMessage || "running"}
                 </span>
                 <span className="vf-gauge">
                   <i style={{ width: `${Math.round(progress * 100)}%` }} />

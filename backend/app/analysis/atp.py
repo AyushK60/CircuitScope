@@ -17,7 +17,7 @@ inside ``torch.enable_grad()``, run the corrupted prompt with
 ``bridge.run_with_hooks``; a hook on ``hook_embed`` returns
 ``x.detach().requires_grad_(True)`` so a graph exists; hooks on every
 ``blocks.{L}.attn.hook_z`` and ``blocks.{L}.mlp.hook_out`` call
-``tensor.retain_grad()`` and store the reference (NOT detached — detaching
+``tensor.retain_grad()`` and store the reference (NOT detached - detaching
 would cut the indirect paths through later layers). Then ``D.backward()`` and
 read ``.grad`` from the stored tensors. Gradients are read INSIDE the try
 block (before cleanup); the ``finally`` drops all stored references and

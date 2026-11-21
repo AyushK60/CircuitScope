@@ -1,5 +1,5 @@
 """M2 gate: backend patched-run numbers must match the independent reference
-implementation (scripts/reference_patch.py — raw HF transformers + forward
+implementation (scripts/reference_patch.py - raw HF transformers + forward
 hooks, no TransformerLens).
 
 Reference values recorded 2026-10-30 on this machine/versions; re-run the
