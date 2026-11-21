@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 
-// Stage 5 e2e: the verification panel runs the fast dla_lens check to a pass,
+// e2e: the verification panel runs the fast dla_lens check to a pass,
 // the agreement section measures and draws real scatter plots, the guided tour
 // walks six scenes, a Reproduce download arrives as a .py file, and the new
 // pages do not overflow horizontally at 390 px. All numbers come from the

@@ -1,4 +1,4 @@
-"""Stage 4 Task 7: the "report" job end to end (real model, temp DB), export
+"""The "report" job end to end (real model, temp DB), export
 markdown, study-backed section with a fixture study, /api/explain, evidence
 re-derivation from stored section data.
 
@@ -371,7 +371,7 @@ def test_explain_rejects_non_sweep_study_jobs(client, report_job):
 
 
 # ---------------------------------------------------------------------------
-# Stage 4 review regressions (found by reading the generated report cold)
+# review regressions (found by reading the generated report cold)
 # ---------------------------------------------------------------------------
 
 

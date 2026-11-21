@@ -1,4 +1,4 @@
-"""Stage 3 Task 4 tests: hand-computed toy cases for the stats module."""
+"""Tests for the stats module: hand-computed toy cases for the stats module."""
 
 from __future__ import annotations
 

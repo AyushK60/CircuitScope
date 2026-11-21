@@ -1,6 +1,6 @@
-# CONCEPTS — Stage 3 (plain-language explanations with the maths)
+# Prompt sets, controls and attribution patching
 
-One-page notes on the ideas Stage 3 uses. Each has an analogy, the maths in a
+One-page notes on the ideas used here. Each has an analogy, the maths in a
 few lines, and the question a reviewer is likely to ask.
 
 ## 1. Activation patching vs ablation — sufficiency vs necessity

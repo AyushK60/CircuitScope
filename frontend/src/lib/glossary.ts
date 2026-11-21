@@ -1,4 +1,4 @@
-// Shared glossary (Stage 4 Task 3/4). examples/glossary.json is the single
+// Shared glossary. examples/glossary.json is the single
 // source, loaded identically by the backend (backend/app/explain/glossary.py).
 
 import glossaryJson from "../../../examples/glossary.json";

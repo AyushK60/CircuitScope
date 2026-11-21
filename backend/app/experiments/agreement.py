@@ -1,4 +1,4 @@
-"""Stage 5 Task 3: the "agreement" job type (about one prompt pair).
+"""The "agreement" job type (about one prompt pair).
 
 Runs the exact per-component denoising pass, attribution patching, and DLA on
 the same task pair, then stores the three vectors, scatter data, statistics,

@@ -1,4 +1,4 @@
-"""Stage 5 Task 1: reproduce scripts are text, self-contained, and honest.
+"""Reproduce scripts are text, self-contained, and honest.
 
 Every kind is generated from a real small result, compiled, import-checked,
 and executed in a subprocess in ``--mode sample``. A tampered stored number
@@ -367,7 +367,7 @@ def test_reproduce_dla_and_lens_are_computed_at_request_time(client):
 
 
 # ---------------------------------------------------------------------------
-# Stage 5 review regression: hostile provenance cannot escape the header comment
+# review regression: hostile provenance cannot escape the header comment
 # ---------------------------------------------------------------------------
 
 

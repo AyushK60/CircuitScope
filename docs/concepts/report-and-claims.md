@@ -1,8 +1,7 @@
-# Stage 4 concepts — how the Circuit Report is written
+# concepts — how the Circuit Report is written
 
 The Report page turns measurements into sentences. This note explains the
-machinery, its guarantees, and its limits. Companion to `docs/ARCHITECTURE.md`
-and the Stage 4 spec (`docs/v2/STAGE_4.md`).
+machinery, its guarantees, and its limits. Companion to `docs/ARCHITECTURE.md`.
 
 ## 1. The claim ledger
 
@@ -114,7 +113,7 @@ Each section's `trust.checks` is computed from the stored data at report time
 - **lens_final_identity** (where_formed): the lens final stage reproduces the
   model's real logits (tolerance 1e-3, top-1 agreement).
 - **final_cell_recovery** / **last_block_other_positions** (which_words): the
-  sweep invariants from Stage 2, recomputed from the stored grid.
+  sweep invariants, recomputed from the stored grid.
 - **baseline_contrast** (both sweeps): |D_clean − D_corrupted| ≥ 1e-3.
 - **dla_reconciliation** (which_parts): |Σ terms + β·w − D| ≤ 2e-3.
 - **reference_loaded** (vs_paper): the known-heads file loaded with ≥ 1 group.

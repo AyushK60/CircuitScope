@@ -1,14 +1,8 @@
 # CircuitScope CI.
 #
-# NOTE (Stage 6): this workflow has never run - there is no remote to push to.
-# Every `run:` command was executed locally (see docs/FINAL_V2_ACCEPTANCE.md
-# for the exact local results), the YAML syntax was machine-checked, and the
-# first push must be followed by the "first push check" in docs/HUMAN_TASKS.md
-# (confirm every job is green on the runner and fix what it exposes).
-#
 # Jobs:
 # - frontend:      lint + unit tests + production build (every push/PR)
-# - backend-fast:  pytest -m "not model" + link check + claims-ledger check
+# - backend-fast:  pytest -m "not model" + link check
 #                  (every push/PR)
 # - backend-model: full pytest incl. the real-model tests; needs the GPT-2
 #                  download, so it runs on workflow_dispatch and the weekly
@@ -53,8 +47,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
         working-directory: frontend
-      # Two oxlint warnings are documented as intentional (Stage 1 lint
-      # decisions in docs/V2_PROGRESS.md); oxlint exits 0 on warnings.
+      # Two oxlint warnings are known and intentional; oxlint exits 0 on warnings.
       - name: Lint (oxlint)
         run: npx oxlint
         working-directory: frontend
@@ -86,8 +79,6 @@ jobs:
         run: pytest backend/tests -m "not model" -q
       - name: Check documentation links
         run: python scripts/check_links.py
-      - name: Check the claims ledger against the stored results
-        run: python scripts/check_claims.py
 
   backend-model:
     name: backend full tests (real model)

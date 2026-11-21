@@ -2,7 +2,7 @@ import { useState } from "react";
 import { api, type ReproduceSpec } from "../api/client";
 
 /**
- * "Reproduce in Python" control (Stage 5 Task 5). The server only generates a
+ * "Reproduce in Python" control. The server only generates a
  * standalone script; this component downloads it (Blob) or copies it to the
  * clipboard. Runtime text comes from the caller because the script's own
  * header states the measured estimate for its kind.

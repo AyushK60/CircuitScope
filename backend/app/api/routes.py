@@ -530,7 +530,7 @@ class StudyRequest(BaseModel):
 
 @router.post("/study")
 def create_study(req: StudyRequest) -> dict:
-    """Submit a Stage 3 study job (one heavy job at a time, shared with
+    """Submit a study job (one heavy job at a time, shared with
     experiments and sweeps). Poll GET /api/experiments/{job_id} for
     status/progress/results."""
     try:
@@ -547,7 +547,7 @@ class AgreementRequest(BaseModel):
 
 @router.post("/agreement")
 def create_agreement(req: AgreementRequest) -> dict:
-    """Submit a Stage 5 agreement job (exact vs AtP vs DLA). One heavy job at
+    """Submit an agreement job (exact vs AtP vs DLA). One heavy job at
     a time, shared with experiments/sweeps/studies/reports."""
     try:
         job = RUNNER.submit(req.model_dump(), job_type="agreement")
@@ -585,7 +585,7 @@ class ReportRequest(BaseModel):
 
 @router.post("/report")
 def create_report(req: ReportRequest) -> dict:
-    """Submit a Stage 4 Circuit Report job (one heavy job at a time, shared
+    """Submit a Circuit Report job (one heavy job at a time, shared
     with experiments/sweeps/studies). Poll GET /api/experiments/{job_id}."""
     try:
         job = RUNNER.submit(req.model_dump(), job_type="report")

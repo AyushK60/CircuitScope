@@ -1,4 +1,4 @@
-// Evidence path resolver for claim provenance (Stage 4 Task 6).
+// Evidence path resolver for claim provenance.
 // Paths look like "sweep.recovery[9][6]" or "lens.max_jump.D_before" and are
 // resolved against the section's compact `data` object. Fixed statements use
 // the documented "fixed:..." / "procedure:..." conventions and are shown as

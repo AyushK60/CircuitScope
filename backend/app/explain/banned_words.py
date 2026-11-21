@@ -1,4 +1,4 @@
-"""Banned words for generated claims (Stage 4 principles 4 and 7).
+"""Banned words for generated claims.
 
 Fixed lists, kept in the repo so the lint is auditable. Checked
 case-insensitively; single words are matched as whole words only.

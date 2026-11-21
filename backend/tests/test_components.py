@@ -1,6 +1,6 @@
-"""Stage 3 Task 2 tests: exact per-component effects.
+"""Tests for exact per-component effects.
 
-- Consistency gate: per-head Rec_D[swap] must equal the Stage 2 layer_head
+- Consistency gate: per-head Rec_D[swap] must equal the layer_head
   sweep results within 1e-4 for the default IOI pair.
 - Ablation sanity: replacing a component's activation by ITSELF changes
   nothing; zero ablation actually intervenes; helpers do not mutate caches.
@@ -42,7 +42,7 @@ def _wait_sweep(job_id, timeout=300.0):
 
 def test_consistency_gate_with_stage2_layer_head_sweep(bridge):
     """For the default IOI pair, per-head Rec_D[swap] from components.py must
-    equal the Stage 2 layer_head sweep within 1e-4 (pre-registered gate)."""
+    equal the layer_head sweep within 1e-4 (pre-registered gate)."""
     job = RUNNER.submit({"task_id": "ioi_john_mary", "mode": "layer_head"}, job_type="sweep")
     j = _wait_sweep(job.job_id)
     assert j.status == "complete", j.error

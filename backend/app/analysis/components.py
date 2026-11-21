@@ -1,4 +1,4 @@
-"""Stage 3 Task 2: exact per-component effects (denoising and ablation).
+"""Exact per-component effects (denoising and ablation).
 
 For one prompt and one corruption this module returns, for all 156 components
 (144 attention heads + 12 MLP ``mlp.hook_out`` blocks), the two metrics of the
@@ -35,7 +35,7 @@ from ..model_runtime.loader import ADAPTER
 
 MAX_HEADS = 12
 
-# Fixed component order used everywhere in Stage 3: heads first (l*12+h), then
+# Fixed component order used everywhere: heads first (l*12+h), then
 # MLPs (144+l). Index 0..143 = heads, 144..155 = MLPs.
 COMPONENT_NAMES = [f"head {l}.{h}" for l in range(MAX_LAYERS) for h in range(MAX_HEADS)] + [
     f"mlp.{l}" for l in range(MAX_LAYERS)

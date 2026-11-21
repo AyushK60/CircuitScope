@@ -1,4 +1,4 @@
-"""Stage 3 Task 1: deterministic IOI prompt-set generator.
+"""Deterministic IOI prompt-set generator.
 
 ``generate(n, seed)`` builds n token-aligned IOI prompts from three fixed
 templates. Every word is filtered through the REAL GPT-2 tokenizer on first

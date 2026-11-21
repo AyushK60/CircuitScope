@@ -23,7 +23,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("ReproduceButton (Stage 5 Reproduce control)", () => {
+describe("ReproduceButton", () => {
   beforeEach(() => {
     vi.mocked(api.reproduce).mockReset();
   });

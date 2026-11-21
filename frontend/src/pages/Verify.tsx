@@ -3,7 +3,7 @@ import { api, type Health, type VerifyJobStatus, type VerifyStatus } from "../ap
 import VerificationCard from "./verify/VerificationCard";
 
 /**
- * Verify page (Stage 5 Task 2): run the repository's independent reference
+ * Verify page: run the repository's independent reference
  * scripts against the app's own numbers. The server supplies every input; the
  * request carries only an allowlisted check id. A pass is evidence that two
  * implementations agree, not that the interpretation is right.

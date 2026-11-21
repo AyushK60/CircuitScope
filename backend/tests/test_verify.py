@@ -1,4 +1,4 @@
-"""Stage 5 Task 2: the verification job never accepts user paths or options.
+"""The verification job never accepts user paths or options.
 
 Tests cover the fixed argv, rejection of unknown/manual/injected ids, temp-dir
 cleanup on timeout and cancellation, the one-heavy-job 422, staleness, and one
@@ -229,7 +229,7 @@ def test_real_patch_check_passes_and_cleans_temp(bridge):
 
 
 # ---------------------------------------------------------------------------
-# Stage 5 review regression: staleness must not depend on line endings
+# review regression: staleness must not depend on line endings
 # ---------------------------------------------------------------------------
 
 

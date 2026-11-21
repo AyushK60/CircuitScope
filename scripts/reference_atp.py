@@ -1,5 +1,4 @@
-"""Independent reference implementation of attribution patching (Stage 3
-Task 3), written SEPARATELY from the backend implementation.
+"""Independent reference implementation of attribution patching, written SEPARATELY from the backend implementation.
 
 Uses raw Hugging Face transformers + PyTorch only — no TransformerLens, no
 backend imports.
@@ -16,7 +15,7 @@ Reimplementation of AtP (denoising direction, metric D):
   - AtP_D(c) = sum over positions/dims of (a_clean - a_corr) * dD/da |_corr
   - Rec_AtP = AtP_D / (D_clean - D_corr).
 
-Gotchas carried over from Stage 2: BOS token id 50256 is prepended to match
+Gotchas: BOS token id 50256 is prepended to match
 the bridge; forward hooks (NOT output_hidden_states); Conv1D weight layout.
 
 Compares Rec_AtP for ALL 156 components on the first 3 usable prompts of a

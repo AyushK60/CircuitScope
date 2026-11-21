@@ -1,4 +1,4 @@
-"""Stage 3 Task 1 tests: the deterministic prompt-set generator.
+"""Tests for the deterministic prompt-set generator.
 
 All checks run against the REAL tokenizer (loaded via the session bridge).
 """

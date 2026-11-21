@@ -1,4 +1,4 @@
-// Reading-level persistence (Stage 4 Task 6). localStorage may throw in some
+// Reading-level persistence. localStorage may throw in some
 // environments (privacy mode, disabled storage); the level then simply does
 // not persist and defaults to curious.
 import type { ReadingLevel } from "./glossary";

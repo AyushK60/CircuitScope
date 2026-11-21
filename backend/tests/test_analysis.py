@@ -1,4 +1,4 @@
-"""Stage 2 analysis tests: direct logit attribution (DLA) and the logit lens.
+"""Analysis tests: direct logit attribution (DLA) and the logit lens.
 
 These are mathematical invariant tests, not copies of output numbers: the
 reconciliation identity and the sign-flip-under-candidate-swap property pin

@@ -1,4 +1,4 @@
-"""Stage 4 Task 7: claim lint — banned words, readability limits, structure."""
+"""Claim lint — banned words, readability limits, structure."""
 
 from __future__ import annotations
 

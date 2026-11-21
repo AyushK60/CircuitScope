@@ -1,7 +1,7 @@
 import { ANALOGIES, GLOSSARY, type ReadingLevel } from "../lib/glossary";
 
 /**
- * Full glossary listing (Stage 4 Task 3): reachable from the Report and Learn
+ * Full glossary listing: reachable from the Report and Learn
  * pages. Every term with all three levels; analogies with their breaks_when.
  */
 export default function GlossaryList({ level = "curious" }: { level?: ReadingLevel }) {

@@ -1,4 +1,4 @@
-"""Stage 4 Task 7: property-style story generation tests over synthetic grids.
+"""Property-style story generation tests over synthetic grids.
 
 Grid covers: negative recovery, near-zero denominators, missing study, ties
 (constant grids), empty lists, and None lens D values. Invariants asserted:

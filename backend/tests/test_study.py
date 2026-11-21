@@ -1,4 +1,4 @@
-"""Stage 3 Task 6/10 tests: the "study" job end to end (small n=4),
+"""Tests for the "study" job end to end (small n=4),
 progress/cancel/persistence contract, validation, exclusions, determinism.
 """
 

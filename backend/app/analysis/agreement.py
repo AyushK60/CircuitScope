@@ -1,7 +1,7 @@
-"""Stage 5 Task 3: do exact patching, attribution patching and DLA agree?
+"""Do exact patching, attribution patching and DLA agree?
 
 For one task pair this module computes, for all 156 components (144 heads and
-12 MLPs), three score vectors on the same scale as the Stage 3 study:
+12 MLPs), three score vectors on the same scale as the study:
 
 - exact denoising ``Rec_D`` (clean activations copied into the pair's own
   corrupted run; ``analysis/components.py``);
@@ -88,7 +88,7 @@ def _method_stats(exact: list[float], other: list[float]) -> dict:
 
 
 def exact_head_vs_sweep(exact: list[float | None], sweep: dict) -> dict:
-    """Consistency gate against a Stage 2 layer_head sweep for the same pair.
+    """Consistency gate against a layer_head sweep for the same pair.
 
     Both paths patch ``blocks.{l}.attn.hook_z`` for one head at all positions,
     so the per-head recoveries must agree to within 1e-4 (same backend, same

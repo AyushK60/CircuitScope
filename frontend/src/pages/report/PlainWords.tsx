@@ -4,7 +4,7 @@ import { ClaimText } from "./Claims";
 import type { ReadingLevel } from "../../lib/glossary";
 
 /**
- * "In plain words" box (Stage 4 Task 6): a short plain-words rendering of a
+ * "In plain words" box: a short plain-words rendering of a
  * completed sweep or study job, fetched from POST /api/explain (the server
  * reads the stored results; the client never supplies data). Appended to the
  * Sweeps and Study pages without changing their existing content or tests.

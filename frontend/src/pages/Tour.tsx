@@ -24,7 +24,7 @@ import {
 } from "./tour/scenes";
 
 /**
- * Guided tour (Stage 5 Task 4): six scenes over one real Circuit Report.
+ * Guided tour: six scenes over one real Circuit Report.
  * Prefers a saved report whose provenance commit matches the current commit;
  * otherwise it generates a fresh one and says so. Reduced motion turns off
  * auto-advance entirely.

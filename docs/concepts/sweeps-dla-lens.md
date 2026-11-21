@@ -155,6 +155,6 @@ same computation.
 Where DLA and patching agree (e.g. for the IOI name-mover heads, our measured
 top DLA contributors at layers 9–10), the evidence is strong. Where they
 disagree, the honest conclusion is "the direct view is incomplete here" — that
-disagreement is exactly what the later agreement study (Stage 3+) will
+disagreement is exactly what the later agreement study later will
 quantify. Nothing in the app claims causation from the lens or from attention
 patterns.

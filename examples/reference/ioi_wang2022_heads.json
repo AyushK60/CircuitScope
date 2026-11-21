@@ -1,6 +1,6 @@
 {
   "task": "ioi_gpt2_small",
-  "description": "Head groups from Wang et al. (2022), 'Interpretability in the Wild: the circuit induced in GPT-2 small by the indirect-object-identification (IOI) task', ICLR 2023. Used ONLY as a descriptive anchor in Stage 3 (mean rank of known heads by Rec_D[swap]); no result depends on this file.",
+  "description": "Head groups from Wang et al. (2022), 'Interpretability in the Wild: the circuit induced in GPT-2 small by the indirect-object-identification (IOI) task', ICLR 2023. Used ONLY as a descriptive anchor in the study (mean rank of known heads by Rec_D[swap]); no result depends on this file.",
   "source": {
     "citation": "Wang et al. 2022, Interpretability in the Wild (ICLR 2023)",
     "url": "https://openreview.net/forum?id=NpsVSN6o4ul"

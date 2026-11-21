@@ -4,7 +4,7 @@ Every qualitative word in generated claims comes from a bucket function here.
 Changing a boundary changes the wording everywhere; the boundaries are
 unit-tested at their exact values (see backend/tests/test_explain_thresholds.py).
 
-Bucket rule (Stage 4 principle 3), on Recovery-style values r:
+Bucket rule, on Recovery-style values r:
     r >= 0.8          -> "most"       (restores most of)
     0.4 <= r < 0.8    -> "large"      (restores a large part of)
     0.1 <= r < 0.4    -> "some"       (restores some of)
@@ -32,12 +32,12 @@ TOL_FINAL_RECOVERY = 1e-3  # final-block final-position recovery == 1
 TOL_LASTBLOCK_UNCHANGED = 1e-4  # non-final positions in the last block unchanged
 MIN_BASELINE_CONTRAST = 1e-3  # |D_clean - D_corrupted| gate (matches sweeps.py)
 
-# --- agreement wording boundaries (Stage 5 Task 3) --------------------------
+# --- agreement wording boundaries --------------------------
 AGREEMENT_CLOSE = 0.9  # Pearson >= 0.9 -> "lines up closely with"
 AGREEMENT_ROUGH = 0.6  # 0.6 <= Pearson < 0.9 -> "lines up roughly with"
 AGREEMENT_GROUP_DIFF = 0.2  # layer-group sentence only above this difference
 
-# --- readability limits (curious level; Stage 4 principle 7) ------------------
+# --- readability limits (curious level) ------------------
 MAX_MEAN_SENTENCE_WORDS = 18
 MAX_SENTENCE_WORDS = 28
 MIN_FLESCH_READING_EASE = 60.0

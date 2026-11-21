@@ -1,12 +1,11 @@
-"""Stage 3 Task 6: the "study" job type — the pre-registered Stage 3 study.
+"""The "study" job type — the pre-registered study.
 
 Pipeline per prompt (Task 6 spec):
   clean cache -> 3 corrupted baselines -> exact denoising for 3 corruptions
-  (both metrics, all 156 components) -> AtP (swap/D) -> DLA (Stage 2) on the
+  (both metrics, all 156 components) -> AtP (swap/D) -> DLA on the
   clean run -> second pass for zero/mean ablation.
 
-The analysis follows the pre-registered plan in docs/PAPER_NOTES.md section 4b
-(written and committed BEFORE this study first ran):
+The analysis follows a plan that was written down before the full runs:
   - exclusion rule: per (prompt, corruption) pair excluded iff
     |D_clean - D_corr| < 0.5 (counts reported per condition);
   - model accuracy = fraction of prompts with D_clean > 0;

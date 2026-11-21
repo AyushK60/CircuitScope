@@ -103,8 +103,8 @@ def test_schema_missing_field_reported(tmp_path):
 
 
 def test_multi_token_candidate_rejected(bridge, tmp_path):
-    # STAGE_1.md suggested " Constantinople", but the real GPT-2 tokenizer
-    # resolves it to a single token (id 46369) — recorded in V2_PROGRESS
+    # " Constantinople" looks multi-token, but the real GPT-2 tokenizer
+    # resolves it to a single token (id 46369)
     # "Questions". " apple pie" is genuinely multi-token, so the real
     # tokenizer rejects it (AssertionError → ValueError in ADAPTER).
     write_task(tmp_path, make_task(pair__candidate_a=" apple pie"))

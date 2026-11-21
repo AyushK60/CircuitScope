@@ -1,4 +1,4 @@
-/** Lens sparkline (Stage 4 Task 6): the score gap D across lens stages,
+/** Lens sparkline: the score gap D across lens stages,
  * drawn in SVG. Values come verbatim from the stored lens data; missing
  * values create gaps, never invented points. */
 export interface SparkStage {

@@ -1,4 +1,4 @@
-"""Stage 3 Task 3: attribution patching (AtP), denoising direction, metric D.
+"""Attribution patching (AtP), denoising direction, metric D.
 
 Definition (per component c with activation a, evaluated at the corrupted run):
 

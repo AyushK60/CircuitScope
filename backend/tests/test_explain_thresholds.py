@@ -1,4 +1,4 @@
-"""Stage 4 Task 7: thresholds and formatting helpers, boundary-tested."""
+"""Thresholds and formatting helpers, boundary-tested."""
 
 from __future__ import annotations
 

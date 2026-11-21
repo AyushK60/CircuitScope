@@ -1,4 +1,4 @@
-"""Reproduction scripts as text (Stage 5 Task 1).
+"""Reproduction scripts as text.
 
 The server only ever generates text; tests may execute it in a subprocess.
 """

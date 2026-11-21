@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Stage 3 e2e: the Study page runs a small REAL study (n=4, a couple of
+// e2e: the Study page runs a small REAL study (n=4, a couple of
 // minutes on CPU) and renders the pre-registered tables. Explicit timeout:
 // an n=4 study runs ~790 patched runs per prompt (~35 s/prompt).
 

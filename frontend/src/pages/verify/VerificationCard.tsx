@@ -13,7 +13,7 @@ function statusInfo(entry: VerifyCheckEntry): {
 }
 
 /**
- * One verification card (Stage 5 Task 2). Status is stated in words AND an
+ * One verification card. Status is stated in words AND an
  * icon, never by colour alone. The last result shows max difference against
  * tolerance, when it ran, and the commit; raw output is collapsed.
  */

@@ -1,4 +1,4 @@
-"""Stage 3 Task 4: hand-rolled statistics (numpy only, no scipy).
+"""Hand-rolled statistics (numpy only, no scipy).
 
 - ``rankdata_average``: ranks with ties averaged (1-based).
 - ``spearman``: Spearman rank correlation via average ranks; constant input

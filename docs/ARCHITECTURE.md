@@ -7,8 +7,8 @@ Browser (React 19 + TS, Vite, port 5173)
                          GuidedWizard, ExperimentForm, ResultsPanel,
                          ContinuationPanel, QuestionPanel, HistoryPanel,
                          useIoiPreset hook); Playground.tsx composes them
-  pages/Sweeps.tsx     → Stage 2 page: patching sweep, DLA, logit lens
-  pages/Study.tsx      → Stage 3 page: prompt-set study (RQ1/RQ2 tables,
+  pages/Sweeps.tsx     → Sweeps page: patching sweep, DLA, logit lens
+  pages/Study.tsx      → Study page: prompt-set study (RQ1/RQ2 tables,
                          top-heads with known-group badges, overlap matrices,
                          caveats); pages/study/ holds Rq1Table, OverlapMatrix,
                          TopHeads (+ heads.ts helpers)
@@ -22,9 +22,9 @@ FastAPI (127.0.0.1:8000)  backend/app/
   api/routes.py        → /api/health, /models, /predict, /inspect,
                          /experiments (+status/cancel/list/export), /hooks,
                          /api/tasks (+ per-task validation),
-                         /api/sweeps (Stage 2 job type "sweep"),
-                         /api/study (Stage 3 job type "study"),
-                         /api/analysis/dla, /api/analysis/logit_lens (Stage 2)
+                         /api/sweeps,
+                         /api/study,
+                         /api/analysis/dla, /api/analysis/logit_lens
   schemas (pydantic)   → input bounds: 512 chars, top_k ≤ 20, layer ≤ 11
   tasks/registry.py    → task definition files (examples/tasks/*.json);
                          malformed files recorded, never fatal; per-pair
@@ -34,37 +34,37 @@ FastAPI (127.0.0.1:8000)  backend/app/
                          serial worker thread → JobRecord lifecycle with
                          type/progress/progress_message; JobCancelled is
                          distinct from ExperimentValidationError
-  experiments/sweeps.py → Stage 2 "sweep" job type (layer_position,
+  experiments/sweeps.py → "sweep" job type (layer_position,
                          layer_head); one clean cache reused for every cell
-  experiments/study.py → Stage 3 "study" job type: prompt set → per-prompt
+  experiments/study.py → "study" job type: prompt set → per-prompt
                          clean cache, 3 corrupted baselines, exact denoising
                          (3 corruptions × 2 metrics × 156 components), AtP
                          (swap/D), DLA (clean run), zero/mean ablation
                          (two-pass, leave-one-out template-family means);
                          pre-registered statistics + exclusions
   experiments/metrics.py → D, Delta, Recovery (unclamped, guarded)
-  analysis/promptsets.py → Stage 3 deterministic IOI prompt-set generator
+  analysis/promptsets.py → deterministic IOI prompt-set generator
                          (tokenizer-filtered single-token words; three
                          templates; swap/third/resample corruptions; token
                          alignment asserted, misaligned draws rejected)
-  analysis/components.py → Stage 3 exact per-component effects: Rec_D/Rec_P
+  analysis/components.py → exact per-component effects: Rec_D/Rec_P
                          (denoising) and Abl_D (zero/mean ablation) for all
                          156 components
-  analysis/atp.py      → Stage 3 attribution patching (gradient × activation
+  analysis/atp.py      → attribution patching (gradient × activation
                          difference; explicit grad recipe because parameters
                          are frozen; first-order limitation stated)
-  analysis/stats.py    → Stage 3 hand-rolled statistics (numpy only):
+  analysis/stats.py    → hand-rolled statistics (numpy only):
                          rankdata/spearman/bootstrap CI/permutation null/
                          top-k overlap
-  analysis/dla.py      → Stage 2 direct logit attribution (reconciliation-
+  analysis/dla.py      → direct logit attribution (reconciliation-
                          checked decomposition of the final residual)
-  analysis/lens.py     → Stage 2 logit lens (final LN + unembed per stage)
+  analysis/lens.py     → logit lens (final LN + unembed per stage)
   model_runtime/loader.py → thread-safe TransformerBridge singleton
   model_runtime/engine.py → predict / capture / attention_pattern /
                          run_patched / patched_logits (logits-only helper
                          shared with run_patched; outputs unchanged) /
                          ablated_logits + interpolated_patch_logits
-                         (Stage 3 ablation and AtP linearity-gate helpers)
+                        
   storage/db.py        → SQLite (outputs/experiments.db): id, config, results JSON
         │
         ▼
@@ -72,7 +72,7 @@ PyTorch 2.15.0+cpu · TransformerLens 4.3.0 TransformerBridge · GPT-2 Small (12
   hook points: 637 registered; verified-capturable subset allowlisted in config.py
 ```
 
-## Task registry (v2, Stage 1)
+## Task registry
 
 Each task (e.g. IOI) is a data file in `examples/tasks/*.json` — prompts,
 candidate tokens, positions of interest, recommended hooks, source citation.
@@ -82,7 +82,7 @@ against the real tokenizer (single-token candidates, token alignment, position
 ranges, hook allowlist). The Playground loads the IOI default pair at mount
 and falls back to its hardcoded preset if the registry is unavailable.
 
-## Job engine (v2, Stage 1)
+## Job engine
 
 `ExperimentRunner.submit(cfg, job_type="intervention")` remains the one heavy
 job at a time. Registered job types provide `validate_fn(cfg)` and
@@ -94,7 +94,7 @@ record is retrievable. The intervention pipeline reports progress at fixed
 milestones (0.05 / 0.2 / 0.5 / 0.9 / 1.0); live job status JSON carries
 `type`, `progress`, `progress_message`.
 
-## Sweeps, DLA, logit lens (v2, Stage 2)
+## Sweeps, DLA, logit lens
 
 - **Sweeps** (`POST /api/sweeps` → job type `"sweep"`, poll
   `GET /api/experiments/{id}`): denoising only — clean activations are copied
@@ -122,10 +122,9 @@ milestones (0.05 / 0.2 / 0.5 / 0.9 / 1.0); live job status JSON carries
   real logits (`ok:false` is never hidden). Labelled a heuristic view.
 
 Independent cross-checks (raw HF transformers, no backend imports):
-`scripts/reference_dla_lens.py` and `scripts/reference_sweep.py` (see
-`docs/V2_PROGRESS.md` for observed differences and how to run them).
+`scripts/reference_dla_lens.py` and `scripts/reference_sweep.py`.
 
-## Prompt sets, components, AtP, study (v2, Stage 3)
+## Prompt sets, components, AtP, study
 
 - **Prompt sets** (`analysis/promptsets.py`): deterministic given `(n, seed)`
   via `random.Random(seed)`. Word pools are filtered through the REAL
@@ -142,7 +141,7 @@ Independent cross-checks (raw HF transformers, no backend imports):
   leave-one-out mean over the other prompts of the same template; two-pass
   design). `Abl_D = D_clean − D_ablated` in raw logit units.
   Consistency gate: per-head `Rec_D[swap]` for the default IOI pair equals the
-  Stage 2 `layer_head` sweep within 1e-4 (tested).
+  `layer_head` sweep within 1e-4 (tested).
 - **Attribution patching** (`analysis/atp.py`): one grad-enabled forward +
   backward on the corrupted prompt (hook on `hook_embed` creates the graph
   because parameters are frozen; `retain_grad` on every `hook_z`/`mlp.hook_out`,
@@ -201,7 +200,7 @@ D_patched 1.9426, Recovery 0.9148.
 - GPT-2 block order rendered: pre-LN (x → LN1 → attn → + → LN2 → MLP → +),
   matching the running model, with residual paths drawn as violet dashed edges.
 
-## Explain package, report job, glossary (v2, Stage 4)
+## Explain package, report job, glossary
 
 New backend package `backend/app/explain/` (all pure text machinery; no model
 access, no LLM):
@@ -234,7 +233,7 @@ access, no LLM):
 New job type `"report"` (`backend/app/experiments/report.py`), registered from
 `routes.py` like sweep/study. Steps: prediction (one forward pass, top token +
 candidate probabilities) → logit lens → layer×position sweep → layer×head
-sweep → DLA (all reusing the Stage 2/3 implementations; sub-sweeps run under a
+sweep → DLA (all reusing the sweep and study implementations; sub-sweeps run under a
 rescaled `_PhaseCtx` so progress stays monotonic) → optional study load
 (validated at submit time → 422 for unknown / non-study / incomplete) →
 section assembly → lint. Results: `sections[]` (id, title, question, claims,
@@ -269,7 +268,7 @@ disclosure, trust panel, analogy box, lens sparkline, "In plain words" box
 reused on Sweeps and Study). Reading level persists in localStorage
 (`lib/level.ts`, try/catch). No new dependencies.
 
-## Reproduce, verify, agreement, tour (v2, Stage 5)
+## Reproduce, verify, agreement, tour
 
 New pieces (all additive; existing response shapes unchanged):
 
@@ -294,7 +293,7 @@ New pieces (all additive; existing response shapes unchanged):
   job type `agreement` (about 8 s). Exact `Rec_D` (reusing `analysis/components.py`),
   AtP (`analysis/atp.py`) and DLA (`analysis/dla.py`) for all 156 components, with
   statistics from `analysis/stats.py`. Route: `POST /api/agreement`.
-  The Stage 2 consistency gate (exact per-head values vs the `layer_head` sweep,
+  The consistency gate (exact per-head values vs the `layer_head` sweep,
   1e-4) is tested and shown live in the report.
 - **`backend/app/explain/`**: `story_agreement_methods` claims at three levels, with
   thresholds in `thresholds.py` (Pearson 0.9 / 0.6; group difference 0.2). The

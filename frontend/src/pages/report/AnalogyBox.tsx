@@ -1,4 +1,4 @@
-/** "Think of it like..." box (Stage 4 Task 4): fixed analogies with a
+/** "Think of it like..." box: fixed analogies with a
  * mandatory breaks_when line, always labelled as an analogy. */
 export default function AnalogyBox({
   analogy,

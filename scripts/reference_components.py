@@ -1,4 +1,4 @@
-"""Independent reference implementation of the Stage 3 exact per-component
+"""Independent reference implementation of the exact per-component
 effects (Task 7), written SEPARATELY from the backend implementation.
 
 Uses raw Hugging Face transformers + PyTorch + stdlib only — no
@@ -20,7 +20,7 @@ independently:
     leave-one-out family mean over the other prompts of the same template,
     computed independently here from the study's prompt records.
 
-Gotchas carried over from Stage 2: BOS 50256 prepended; forward hooks (NOT
+Gotchas: BOS 50256 prepended; forward hooks (NOT
 output_hidden_states); Conv1D weight layout.
 
 Compares with the backend's per_prompt values (tolerance 5e-3 on recoveries

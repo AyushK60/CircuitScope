@@ -1,4 +1,4 @@
-"""Claim lint (Stage 4 Tasks 1/7).
+"""Claim lint.
 
 ``lint_claims`` is used BOTH by the tests and at runtime: a report job that
 produces a lint failure fails honestly instead of shipping bad text.

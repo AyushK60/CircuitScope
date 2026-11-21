@@ -1,4 +1,4 @@
-"""Stage 5 Task 2: the "verify" job type and the check registry.
+"""The "verify" job type and the check registry.
 
 Each entry in ``CHECKS`` names one of the repository's independent reference
 scripts. A verify job computes the API-side numbers IN PROCESS with the same
@@ -9,7 +9,7 @@ script's own ``max |api - reference|`` line and exit code decide pass/fail;
 a failure is reported honestly and is never rounded away.
 
 ``feedforward`` is listed but not runnable from the server: the browser Neural
-Lab needs browser-side input, as the Stage 5 spec states.
+Lab needs browser-side input, by design.
 
 The reference scripts hardcode the default IOI pair (clean/corrupted, the two
 candidate strings, and the blocks.5.hook_out patch at position 9). The

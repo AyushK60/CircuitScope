@@ -35,7 +35,7 @@ def ioi():
     }
 
 
-# Stage 6 A3: every test whose fixture closure needs the real model is tagged
+# Every test whose fixture closure needs the real model is tagged
 # with the `model` marker (registered in pytest.ini), so CI can run
 # `pytest -m "not model"` as a fast job. Fixture-based tagging means existing
 # tests are untouched: `bridge`/`ioi` are the model fixtures, and the per-file

@@ -6,7 +6,7 @@ function fmtVal(v: unknown): string {
   return String(v);
 }
 
-/** "Why trust this?" panel (Stage 4 Task 5). A failed check is shown in red
+/** "Why trust this?" panel. A failed check is shown in red
  * with its number and labelled FAILED — colour is never the only signal. */
 export default function TrustPanel({ trust }: { trust: ReportSection["trust"] }) {
   return (

@@ -1,5 +1,5 @@
 {
-  "$comment": "Shared glossary for CircuitScope v2 Stage 4. Single source for backend templates (backend/app/explain/glossary.py) and the frontend (frontend/src/lib/glossary.ts). Each term has three levels; curious definitions must pass the claim lint (short sentences, simple words). Every analogy has a mandatory breaks_when line. This is fixed content written by hand — no LLM generated text at runtime.",
+  "$comment": "Shared glossary for CircuitScope. Single source for backend templates (backend/app/explain/glossary.py) and the frontend (frontend/src/lib/glossary.ts). Each term has three levels; curious definitions must pass the claim lint (short sentences, simple words). Every analogy has a mandatory breaks_when line. This is fixed content written by hand — no model-generated text at runtime.",
   "terms": {
     "token": {
       "display": "token",

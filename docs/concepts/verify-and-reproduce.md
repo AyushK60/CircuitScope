@@ -1,4 +1,4 @@
-# Concepts for Stage 5: trust, checking and the tour
+# Trust, checking and the tour
 
 Plain-language notes for the three trust features. Each is about whether the
 numbers on screen were computed correctly. None of them checks whether the
@@ -16,7 +16,7 @@ It proves:
 - The numbers shown for that result are reproducible by a second, independent
   implementation on this model revision, within the stated tolerance.
 - The stored numbers were not edited afterwards (a changed number makes the
-  script exit non-zero; see `V2_STAGE5_VERIFICATION.md` section 3).
+  script exit non-zero; see the Verify page).
 
 It does NOT prove:
 - That the explanation is right. "Head 9.6 carries the name signal" is a claim

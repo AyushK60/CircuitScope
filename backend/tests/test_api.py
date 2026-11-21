@@ -27,7 +27,7 @@ def test_health(client):
 
 
 def test_health_revision_hash_is_40_hex(client):
-    """Stage 6 A1: metadata() exposes the real model revision as revision_hash,
+    """Metadata() exposes the real model revision as revision_hash,
     additively; the legacy `revision` (tokenizer name/path) is unchanged."""
     r = client.get("/api/health")
     assert r.status_code == 200

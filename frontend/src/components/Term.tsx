@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { GLOSSARY, type ReadingLevel } from "../lib/glossary";
 
 /**
- * Glossary term (Stage 4 Task 3): a keyboard-focusable button with a dotted
+ * Glossary term: a keyboard-focusable button with a dotted
  * underline that opens an accessible popover. Escape closes; clicking outside
  * closes; works on touch (onClick); aria-describedby links button to popover.
  */

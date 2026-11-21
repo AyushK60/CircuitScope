@@ -1,4 +1,4 @@
-"""Stage 4 Task 2/5: the "report" job type — the Circuit Report.
+"""The "report" job type — the Circuit Report.
 
 Pipeline (progress reported per step): prediction (clean prompt, candidates)
 -> logit lens -> layer x position sweep -> layer x head sweep -> DLA (clean)
@@ -581,7 +581,7 @@ def build_sections(cfg: dict, steps: dict) -> list[dict]:
             "evidence_tier": study_tier if study_summary else live_tier,
             "analogy": analogy_by_id(SECTION_ANALOGY["how_sure"]) if study_summary else None,
             "trust": {
-                "measured": "The attached study ran the pre-registered Stage 3 analysis over a generated prompt set. Only the top-10 overlap is recomputed here, from the stored per-prompt data.",
+                "measured": "The attached study ran the pre-registered analysis over a generated prompt set. Only the top-10 overlap is recomputed here, from the stored per-prompt data.",
                 "against": how_against,
                 "checks": how_checks,
                 "warnings": [],

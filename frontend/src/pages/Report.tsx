@@ -19,7 +19,7 @@ import AnalogyBox from "./report/AnalogyBox";
 import LensSparkline from "./report/LensSparkline";
 
 /**
- * Circuit Report page (Stage 4 Task 6): one page, ~2 minutes of reading,
+ * Circuit Report page: one page, ~2 minutes of reading,
  * every sentence generated from measured values by fixed templates and
  * lint-checked on the server. Reading level is remembered in localStorage
  * (inside try/catch) and applied to the rendered claims.

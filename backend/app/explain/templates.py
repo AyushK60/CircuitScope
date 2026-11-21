@@ -1,4 +1,4 @@
-"""Template registry for generated claims (Stage 4 Task 1).
+"""Template registry for generated claims.
 
 All generated text lives here as data — never scattered f-strings at runtime.
 Each template declares:

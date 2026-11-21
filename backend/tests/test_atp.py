@@ -1,4 +1,4 @@
-"""Stage 3 Task 3 tests: attribution patching.
+"""Tests for attribution patching.
 
 - Linearity gate: the central difference of D around alpha=0 (per unit of full
   patch) must match AtP_D for all 156 components with Pearson r > 0.999, and

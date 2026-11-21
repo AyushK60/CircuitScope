@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Stage 2 e2e: the Sweeps page runs the real layer-position patching sweep on
+// e2e: the Sweeps page runs the real layer-position patching sweep on
 // the IOI task, shows the measured heatmap, and the DLA reconciliation line
 // reports ok. All numbers come from the real backend.
 

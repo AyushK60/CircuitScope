@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-// Stage 4 e2e: the Report page generates a real Circuit Report (no study,
+// e2e: the Report page generates a real Circuit Report (no study,
 // ~20-30 s on CPU: two patching sweeps + lens + DLA + prediction), renders
 // every section, opens a glossary term by keyboard, and offers the Markdown
 // download. All numbers come from the real backend.

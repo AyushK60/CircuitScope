@@ -1,4 +1,4 @@
-"""Explain package (Stage 4): template-based claim generation, claim lint,
+"""Explain package: template-based claim generation, claim lint,
 thresholds, and the shared glossary loader.
 
 No LLM is involved anywhere: every sentence is a template from

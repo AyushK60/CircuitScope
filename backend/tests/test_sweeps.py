@@ -1,4 +1,4 @@
-"""Stage 2 sweep tests: mathematical invariants of the patching sweep grids,
+"""Sweep tests: mathematical invariants of the patching sweep grids,
 the job-engine contract (progress, cancellation, one-heavy-job rule), API
 validation, and determinism. All numbers are measured on the real model.
 """

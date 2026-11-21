@@ -1,4 +1,4 @@
-"""Story functions (Stage 4 Task 1): pure functions from stored result dicts
+"""Story functions: pure functions from stored result dicts
 to lists of claim objects.
 
 Contract for every claim object: {id, level, text, claim_type, evidence} —
@@ -171,7 +171,7 @@ def compact_dla(dla_result: dict) -> dict:
         "most_negative": top[-1] if top else None,
         "notes": dla_result["notes"],
         # All 171 terms, stored additively so the report reproduce script can
-        # recompute every one of them (Stage 5 Task 1).
+        # recompute every one of them.
         "components": [
             {
                 "name": c["name"],

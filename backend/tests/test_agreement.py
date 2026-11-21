@@ -1,4 +1,4 @@
-"""Stage 5 Task 3: the agreement job, declared wording boundaries, the Stage 2
+"""The agreement job, declared wording boundaries, the layer_head
 consistency gate, and the Report section integration.
 """
 

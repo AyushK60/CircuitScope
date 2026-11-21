@@ -219,7 +219,7 @@ export interface TaskSummary {
   n_pairs: number;
 }
 
-// ---- Stage 2: sweeps, DLA, logit lens ----
+// sweeps, DLA, logit lens ----
 
 export interface DlaComponent {
   name: string;
@@ -319,7 +319,7 @@ export interface SweepJobStatus {
   progress_message: string;
 }
 
-// ---- Stage 3: study ----
+// study ----
 
 export interface MeanCi {
   mean: number | null;
@@ -454,7 +454,7 @@ export interface StudyJobStatus {
   progress_message: string;
 }
 
-// ---- Stage 4: report + explain ----
+// report + explain ----
 
 export type ReadingLevel = "curious" | "student" | "expert";
 
@@ -535,7 +535,7 @@ export interface ExplainResponse {
   lint: { ok: boolean };
 }
 
-// ---- Stage 5: reproduce, verify, agreement, tour ----
+// reproduce, verify, agreement, tour ----
 
 export type ReproduceKind = "intervention" | "sweep" | "study_subset" | "report" | "dla" | "lens";
 
@@ -793,7 +793,7 @@ export const api = {
         ...(candidateA && candidateB ? { candidate_a: candidateA, candidate_b: candidateB } : {}),
       }),
     }),
-  // ---- Stage 4 ----
+  // ---- report and explain ----
   startReport: (spec: { task_id: string; pair_id?: string | null; study_job_id?: string | null }) =>
     call<{ job_id: string; status: string }>("/api/report", {
       method: "POST",
@@ -807,7 +807,7 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ job_id: jobId, level }),
     }),
-  // ---- Stage 5 ----
+  // ---- reproduce, verify, agreement ----
   reproduce: async (spec: ReproduceSpec): Promise<{ blob: Blob; filename: string }> => {
     const res = await fetch(`${API_BASE}/api/reproduce`, {
       method: "POST",

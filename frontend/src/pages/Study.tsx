@@ -13,7 +13,7 @@ import ReproduceButton from "../components/ReproduceButton";
 import PlainWords from "./report/PlainWords";
 
 /**
- * Study page (Stage 3): the pre-registered prompt-set study. Every number
+ * Study page: the pre-registered prompt-set study. Every number
  * comes from the API response of a real study run; the page shows fixed
  * caveat texts and labels only — no generated prose claims.
  */
@@ -94,9 +94,9 @@ export default function Study({ health }: { health: Health | null }) {
     <main className="page">
       <h1>Study</h1>
       <p style={{ color: "var(--text-1)", maxWidth: "80ch" }}>
-        The pre-registered Stage 3 study over a generated IOI prompt set: exact per-component effects
+        The pre-registered study over a generated IOI prompt set: exact per-component effects
         (denoising under three corruption methods, zero and mean ablation), attribution patching and DLA,
-        with the statistics fixed in <code className="mono">docs/PAPER_NOTES.md §4b</code> before any full run.
+        with the statistics fixed before any full run.
         Direction: denoising copies clean activations into the corrupted run (sufficiency); ablation replaces
         a component's output in the clean run (necessity).
       </p>
