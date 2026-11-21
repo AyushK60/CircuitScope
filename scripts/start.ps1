@@ -118,15 +118,19 @@ $BackendErr = Join-Path $RunDir "backend.err.log"
 $FrontendOut = Join-Path $RunDir "frontend.out.log"
 $FrontendErr = Join-Path $RunDir "frontend.err.log"
 
+# Child processes read stdin from an empty file so they never inherit a closed console handle.
+$StdinFile = Join-Path $RunDir "stdin.empty"
+New-Item -ItemType File -Path $StdinFile -Force | Out-Null
+
 Say "starting backend: $VenvPy $PyArg"
 $BackendProc = Start-Process -FilePath $VenvPy -ArgumentList @("-m", "backend.app.main") `
     -WorkingDirectory $RepoRoot -WindowStyle Hidden `
-    -RedirectStandardOutput $BackendOut -RedirectStandardError $BackendErr -PassThru
+    -RedirectStandardInput $StdinFile -RedirectStandardOutput $BackendOut -RedirectStandardError $BackendErr -PassThru
 
 Say "starting frontend: $NodeExe $NodeArg"
-$FrontendProc = Start-Process -FilePath $NodeExe -ArgumentList @($ViteJs, "--port", "$FrontendPort", "--strictPort") `
+$FrontendProc = Start-Process -FilePath $NodeExe -ArgumentList @(('"' + $ViteJs + '"'), "--port", "$FrontendPort", "--strictPort") `
     -WorkingDirectory (Join-Path $RepoRoot "frontend") -WindowStyle Hidden `
-    -RedirectStandardOutput $FrontendOut -RedirectStandardError $FrontendErr -PassThru
+    -RedirectStandardInput $StdinFile -RedirectStandardOutput $FrontendOut -RedirectStandardError $FrontendErr -PassThru
 
 # Record what we started BEFORE waiting, so scripts\stop.ps1 can always stop it.
 $Record = [ordered]@{
