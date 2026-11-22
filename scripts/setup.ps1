@@ -59,16 +59,16 @@ if (Test-Path $VenvPy) {
     Say "will use Python: $PyLabel"
 }
 
-# --- Check Node 20+ ---
+# --- Check Node 22+ ---
 $NodeCmd = Get-Command node -ErrorAction SilentlyContinue
 if ($null -eq $NodeCmd) {
-    Die "Node.js 20 or newer is required (found: none). Install the Node LTS from nodejs.org, then rerun scripts\setup.bat."
+    Die "Node.js 22 or newer is required (found: none). Install the Node LTS from nodejs.org, then rerun scripts\setup.bat."
 }
 $NodeVer = & node --version 2>&1
 $NodeMajor = if ($NodeVer -match "^v(\d+)\.") { [int]$Matches[1] } else { 0 }
 Say "found node: $NodeVer"
-if ($NodeMajor -lt 20) {
-    Die "Node.js 20 or newer is required (found: $NodeVer). Install the Node LTS from nodejs.org, then rerun scripts\setup.bat."
+if ($NodeMajor -lt 22) {
+    Die "Node.js 22 or newer is required (found: $NodeVer). Install the Node LTS from nodejs.org, then rerun scripts\setup.bat."
 }
 
 # --- Steps (skipped as 'done' when already satisfied; DryRun prints only) ---

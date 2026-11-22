@@ -64,7 +64,7 @@ See [verify and reproduce](docs/concepts/verify-and-reproduce.md).
 
 ## Quick start (Windows)
 
-Prerequisites: Windows, Python 3.11, Node.js 20+. No admin rights needed.
+Prerequisites: Windows, Python 3.11, Node.js 22+ (24 recommended). No admin rights needed.
 
 ```powershell
 git clone <this repository>
