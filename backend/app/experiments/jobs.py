@@ -292,7 +292,7 @@ class ExperimentRunner:
                 job.status = "failed"
                 job.error = str(e)
                 job.finished_at = time.time()
-        except Exception as e:  # surface real failures honestly
+        except Exception as e:  # surface the real failure
             with self._lock:
                 job.status = "failed"
                 job.error = f"{type(e).__name__}: {e}"

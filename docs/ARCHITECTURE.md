@@ -186,7 +186,7 @@ Equivalence verified against an independent implementation
 TransformerLens) to within 5e-3: D_clean 2.5128, D_corrupted −4.1768,
 D_patched 1.9426, Recovery 0.9148.
 
-## Frontend truthfulness contract
+## What the frontend shows
 
 - The hero schematic is labeled "ARCHITECTURAL ILLUSTRATION"; live views are
   labeled with hook IDs, shapes, device, and value scales.
@@ -194,7 +194,7 @@ D_patched 1.9426, Recovery 0.9148.
   metadata, never hardcoded.
 - Playground metrics cards, run columns, and exports all render
   `ExperimentResult` fields verbatim; no-effect and failed runs have distinct
-  honest states.
+  states.
 - GPT-2 block order rendered: pre-LN (x → LN1 → attn → + → LN2 → MLP → +),
   matching the running model, with residual paths drawn as violet dashed edges.
 
@@ -225,7 +225,7 @@ access, no LLM):
 - `lint.py` - the claim lint used by tests AND at runtime: banned
   words/phrases at all levels (principle 4), glossary-marker validation, and
   the curious-only readability limits + banned-idiom list. A report/export
-  that lints badly fails honestly (500/failed job) instead of shipping.
+  that lints badly fails (500/failed job) instead of shipping.
 - `glossary.py` - loader for the shared `examples/glossary.json`.
 
 New job type `"report"` (`backend/app/experiments/report.py`), registered from

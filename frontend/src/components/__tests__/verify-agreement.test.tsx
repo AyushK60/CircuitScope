@@ -99,7 +99,7 @@ describe("AgreementScatter", () => {
     expect(hide.getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("shows an honest empty state with no points", () => {
+  it("shows an empty state with no points", () => {
     render(<AgreementScatter points={[]} title="t" xLabel="x" yLabel="y" />);
     expect(screen.getByText("No scatter data yet.")).toBeTruthy();
   });

@@ -1,7 +1,7 @@
 """Claim lint.
 
 ``lint_claims`` is used BOTH by the tests and at runtime: a report job that
-produces a lint failure fails honestly instead of shipping bad text.
+produces a lint failure fails instead of shipping bad text.
 
 Checks per claim:
   - structural: id / level / claim_type present and valid, evidence non-empty.

@@ -124,7 +124,7 @@ def test_experiment_invalid_hook_rejected(client):
     assert r.status_code == 422
 
 
-def test_experiment_misaligned_prompts_fail_honestly(client):
+def test_experiment_misaligned_prompts_fail_clearly(client):
     r = client.post(
         "/api/experiments",
         json={

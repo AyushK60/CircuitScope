@@ -66,7 +66,7 @@ export interface SavedReportCandidate {
 /**
  * Pick the newest saved report for the task whose provenance commit matches
  * the current commit (ignoring "+dirty"). Returns null when none matches, so
- * the tour can honestly generate a fresh report instead.
+ * the tour can generate a fresh report instead.
  */
 export function pickSavedReport(
   candidates: SavedReportCandidate[],

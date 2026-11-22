@@ -3,7 +3,7 @@
      warm charcoal #1e2221 · mineral ink #2b302d · porcelain #eee9de
      persimmon #df795a · brass #d5b46a · sage #91aa91
      dusty violet #a08cb8 · lavender #b9a8d2 (selection)
-   Scientific observatory layout and truthfulness rules unchanged. */
+   Scientific observatory layout and labelling rules unchanged. */
 
 :root,
 .theme-dark {
@@ -215,7 +215,7 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 .hero::before {
   content: "";
   position: absolute; inset: 0; pointer-events: none;
-  /* soft ruri aurora, decoration only - no fake data */
+  /* soft ruri aurora, decoration only, no data */
   background:
     radial-gradient(ellipse 60% 50% at 78% 18%, rgba(223, 121, 90, 0.09), transparent 70%),
     radial-gradient(ellipse 45% 40% at 15% 80%, rgba(213, 180, 106, 0.06), transparent 70%);

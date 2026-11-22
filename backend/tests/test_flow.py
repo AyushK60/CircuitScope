@@ -35,7 +35,7 @@ def test_capture_flow_structure(bridge):
 
 
 def test_capture_flow_norms_increase(bridge):
-    """Residual norm should grow as blocks add contributions (measured, robust)."""
+    """Residual norm should grow as blocks add contributions (measured)."""
     flow = engine.capture_flow("Hello world")
     means = [b["resid_norm_mean"] for b in flow["blocks"]]
     assert means[-1] > means[0], f"residual norm should accumulate: {means}"

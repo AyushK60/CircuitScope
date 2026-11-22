@@ -66,7 +66,7 @@ def test_git_failure_is_swallowed(monkeypatch):
         assert p["git_commit"] == "unknown"
         assert EXPECTED_KEYS <= set(p)  # the rest of the record is intact
     finally:
-        provenance._clear_static_cache()  # repopulate truthfully for later tests
+        provenance._clear_static_cache()  # repopulate for later tests
 
 
 class _FakeCompleted:

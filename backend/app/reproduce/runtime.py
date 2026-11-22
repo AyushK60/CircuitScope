@@ -270,7 +270,7 @@ def run_lens(data, tok, model, prefix=""):
     real = out.logits[0, pos]
     identity = float((lens_logits(residuals[-1][1], ln_f, eps, model.lm_head) - real).abs().max())
     stored_final = data["stored"].get("final_matches_model") or {}
-    # The identity is expected to be zero up to float32 error, so the honest
+    # The identity is expected to be zero up to float32 error, so the
     # comparison is against the declared bound, not against a fabricated value.
     add(prefix, "lens final identity (expected 0, max abs logit diff)", 0.0, identity, tol_identity)
     if stored_final.get("max_abs_logit_diff_full") is not None:

@@ -92,7 +92,7 @@ def exact_head_vs_sweep(exact: list[float | None], sweep: dict) -> dict:
 
     Both paths patch ``blocks.{l}.attn.hook_z`` for one head at all positions,
     so the per-head recoveries must agree to within 1e-4 (same backend, same
-    pass). A larger gap is an honest failure, never rounded away.
+    pass). A larger gap is reported as a failure.
     """
     rec = sweep.get("recovery") or []
     max_diff = 0.0

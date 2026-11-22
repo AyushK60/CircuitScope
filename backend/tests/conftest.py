@@ -42,7 +42,7 @@ def ioi():
 # `client`/job fixtures depend on `bridge`, which `item.fixturenames` (the
 # transitive closure) already includes.
 #
-# Two honest exceptions that request no model fixture but still need the model
+# Two exceptions that request no model fixture but still need the model
 # environment (found by running the fast subset):
 # - test_study.py: its fixture-less tests (exclusion rule, determinism, worker
 #   rejection) read the completed studies that only the module's own model

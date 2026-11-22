@@ -108,7 +108,7 @@ def compute_logit_lens(
         max_abs_logit_diff_candidates = abs(stages[-1]["D"] - model_D)
     else:
         max_abs_logit_diff_candidates = None
-    # Additive honesty check: the full-vocabulary logit vectors at the final stage.
+    # Additive consistency check: the full-vocabulary logit vectors at the final stage.
     max_abs_logit_diff_full = float((final_lens_logits - final_logits[0, pos]).abs().max())
     top1_agrees = bool(int(torch.argmax(final_lens_logits)) == int(torch.argmax(final_logits[0, pos])))
     ok = top1_agrees and (

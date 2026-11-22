@@ -564,7 +564,7 @@ def story_agreement_with_paper(data: dict | None) -> list[dict]:
                     suffix=gid,
                 )
 
-    # honest disagreement: compare the leading group with the paper's main path
+    # disagreement with the paper: compare the leading group with the paper's main path
     if order:
         top_gid = max(order, key=lambda g: (group_counts[g], -order.index(g)))
         if top_gid != "name_movers":

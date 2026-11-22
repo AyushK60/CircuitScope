@@ -1,4 +1,4 @@
-"""FastAPI routes. Localhost-only product API; strict allowlists; honest errors."""
+"""FastAPI routes. Localhost-only product API; strict allowlists; plain error messages."""
 
 from __future__ import annotations
 

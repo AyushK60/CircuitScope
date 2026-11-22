@@ -123,7 +123,7 @@ Each section's `trust.checks` is computed from the stored data at report time
 A failed check is displayed in red with its number and the word FAILED -
 colour is never the only signal.
 
-## 8. Honest disagreement with the paper
+## 8. Where the report disagrees with the paper
 
 Our ranking basis (single-head denoising recovery over the whole head output)
 differs from the paper's direct-effect path patching, so rankings can differ

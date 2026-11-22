@@ -6,7 +6,7 @@ functions the API endpoints call, writes them to a temp directory under
 ``outputs/verify_tmp/<job_id>/``, and then runs the reference script with a
 FIXED argv (no user string ever reaches the command line, no shell). The
 script's own ``max |api - reference|`` line and exit code decide pass/fail;
-a failure is reported honestly and is never rounded away.
+a failure is reported as a failure, not rounded.
 
 ``feedforward`` is listed but not runnable from the server: the browser Neural
 Lab needs browser-side input, by design.

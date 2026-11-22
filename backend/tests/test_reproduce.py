@@ -1,4 +1,4 @@
-"""Reproduce scripts are text, self-contained, and honest.
+"""Reproduce scripts are text, and self-contained.
 
 Every kind is generated from a real small result, compiled, import-checked,
 and executed in a subprocess in ``--mode sample``. A tampered stored number

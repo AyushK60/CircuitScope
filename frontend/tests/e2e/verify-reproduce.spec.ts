@@ -68,7 +68,7 @@ test.describe("Sweeps page: agreement section", () => {
     const section = page.locator("section#sw-agree");
     await expect(section.getByRole("heading", { name: "Do the methods agree?" })).toBeVisible();
     // The measurement starts by itself when the step scrolls into view. The previous check's
-    // heavy-job slot can still be releasing for a moment, so if it was refused with the honest
+    // heavy-job slot can still be releasing for a moment, so if it was refused with the
     // "already running" 422, press "Run again" until it is accepted.
     await section.scrollIntoViewIfNeeded();
     const scatters = section.getByRole("img", { name: /attention heads \(circles\) and .* MLPs \(squares\)/ });

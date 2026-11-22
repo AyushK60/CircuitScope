@@ -6,7 +6,7 @@ Pipeline (progress reported per step): prediction (clean prompt, candidates)
 validated at submit time -> 422) -> story generation -> claim lint.
 
 Every sentence is a template from app.explain filled with measured values;
-``lint_claims`` runs at the end - a lint failure fails the job honestly
+``lint_claims`` runs at the end - a lint failure fails the job
 (experiment error), it never ships bad text.
 
 Results contain sections (id, title, question, claims, compact data,
@@ -694,7 +694,7 @@ def run_report(cfg: dict, ctx: JobContext) -> dict:
     }
     sections = build_sections(cfg, steps)
 
-    # lint ALL claims at ALL levels; a failure fails the job honestly.
+    # lint ALL claims at ALL levels; a failure fails the job.
     all_claims = [c for s in sections for c in s["claims"]]
     problems = explain_lint.lint_claims(all_claims)
     curious_claims = [c["text"] for c in all_claims if c["level"] == "curious"]

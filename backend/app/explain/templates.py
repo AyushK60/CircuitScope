@@ -36,7 +36,7 @@ LEVELS = ("curious", "student", "expert")
 
 
 def _check_markers() -> None:
-    """Import-time honesty check: every glossary marker must exist."""
+    """Import-time check: every glossary marker must exist."""
     problems = []
     for key, spec in TEMPLATES.items():
         for level, text in spec["levels"].items():

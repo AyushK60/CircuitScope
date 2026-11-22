@@ -105,7 +105,7 @@ test.describe("CircuitScope core journey", () => {
     expect(overflowMap).toBeLessThanOrEqual(2);
   });
 
-  test("guided tour: stages replay recorded data with honest pacing", async ({ page }) => {
+  test("guided tour: stages replay recorded data and say so", async ({ page }) => {
     await page.goto("/#/explorer");
     await page.getByRole("button", { name: "▶ Play the walk" }).click();
     // playback advances through real block stages showing measured heatmaps
@@ -113,7 +113,7 @@ test.describe("CircuitScope core journey", () => {
       timeout: 15_000,
     });
     await expect(page.getByText(/blocks\.0\.attn\.hook_pattern/).first()).toBeVisible();
-    // honest pacing label is always present
+    // the pacing label is always present
     await expect(page.getByText(/not GPU timing/)).toBeVisible();
     // step controls work
     await page.getByRole("button", { name: "Next stage" }).click();
@@ -155,7 +155,7 @@ test.describe("CircuitScope core journey", () => {
     await expect(page.getByText(/greedy \(argmax\)/)).toBeVisible({ timeout: 30_000 });
     // the continuation extends the prompt (measured tokens rendered)
     await expect(page.getByText(/step 1:/)).toBeVisible();
-    // sampling mode exposes its parameters honestly
+    // sampling mode shows its parameters
     await page.getByLabel("mode").selectOption("sample");
     await expect(page.getByText(/temp 0\.90/)).toBeVisible();
   });

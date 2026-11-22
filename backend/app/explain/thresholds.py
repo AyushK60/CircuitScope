@@ -106,7 +106,7 @@ def dla_bucket(v: float) -> str:
 
 
 def fmt_num(x, digits: int = 2) -> str:
-    """Format a number with fixed digits; 'n/a' for None/non-finite (honest
+    """Format a number with fixed digits; 'n/a' for None/non-finite (a
     missing-data marker, never a zero)."""
     try:
         v = float(x)

@@ -76,7 +76,7 @@ def main() -> int:
     # Block outputs (residual after each block) via forward hooks. Note: in
     # transformers 5.x output_hidden_states does NOT contain block 11's
     # pre-ln_f output (the last entry is already after ln_f), so hooks are the
-    # honest way to get every stage's residual.
+    # way to get every stage's residual.
     block_out: dict[int, torch.Tensor] = {}
     wte_out: dict[str, torch.Tensor] = {}
 

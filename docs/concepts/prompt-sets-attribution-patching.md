@@ -34,7 +34,7 @@ study never mixes the two in one figure without labelling, and why a
 component can score high in one and low in the other.
 
 **Likely question.** "Which one is the real importance?" - Neither alone.
-They answer different counterfactual questions; the honest claim is about the
+They answer different counterfactual questions; the claim to make is about the
 measured effect under the stated intervention.
 
 ## 2. Attribution patching (AtP) and its limit

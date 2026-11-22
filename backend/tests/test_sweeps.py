@@ -226,7 +226,7 @@ def test_api_sweep_lifecycle_and_persisted_config(client, bridge):
 # ---- baseline gate ----
 
 
-def test_identical_baselines_rejected_honestly():
+def test_identical_baselines_rejected():
     with pytest.raises(ExperimentValidationError) as ei:
         check_baselines(2.5128, 2.5128)
     assert "Recovery would be meaningless" in str(ei.value)

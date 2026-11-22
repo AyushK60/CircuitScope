@@ -52,7 +52,7 @@ def test_predict_candidate_comparison_matches_reference(client):
     assert c["prob_a"] > c["prob_b"]
 
 
-def test_predict_candidate_validation_honest(client):
+def test_predict_candidate_validation_errors(client):
     r = client.post(
         "/api/predict",
         json={"text": "Hi there", "candidate_a": " shopkeeper", "candidate_b": " John"},

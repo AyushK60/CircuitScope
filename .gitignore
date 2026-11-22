@@ -28,5 +28,5 @@ frontend/coverage/
 # release packaging artifacts
 release/
 
-# Private study notes, paper drafts and results (never published)
+# Local notes
 project-study/

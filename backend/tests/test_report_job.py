@@ -105,7 +105,7 @@ def test_report_completes_with_all_sections(report_job):
     assert stats["flesch_reading_ease"] >= 60
     print(f"\nreport curious readability: {stats}")
     assert res["generated_at"] and res["provenance"]["git_commit"]
-    # honest disagreement section present (single-prompt, live tier for vs_paper)
+    # disagreement section present (single-prompt, live tier for vs_paper)
     assert by_id["vs_paper"]["evidence_tier"] == "single prompt, live"
 
 

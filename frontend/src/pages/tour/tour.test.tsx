@@ -216,7 +216,7 @@ describe("Tour component", () => {
     expect(screen.getByRole("button", { name: "Resume auto-play" })).toBeTruthy();
   });
 
-  it("shows the honest error state instead of placeholder numbers when the backend fails", async () => {
+  it("shows the error state instead of placeholder numbers when the backend fails", async () => {
     setReducedMotion(true);
     vi.mocked(api.tasks).mockRejectedValue(new Error("backend unreachable"));
     vi.mocked(api.verifyStatus).mockResolvedValue({ checks: [], current_git_commit: null } as never);

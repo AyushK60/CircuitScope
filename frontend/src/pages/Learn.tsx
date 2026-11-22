@@ -73,7 +73,7 @@ export default function Learn() {
 
           <div className="ln-isnt">
             <div>
-              <b>CircuitScope is</b>A faithful diagram of a real transformer, live token-level measurements from named
+              <b>CircuitScope is</b>A diagram of a real transformer, live token-level measurements from named
               hooks, and controlled activation-patching experiments with reproducible numbers.
             </div>
             <div>
