@@ -32,13 +32,18 @@ cross-checked and explainable.
 | | | |
 | --- | --- | --- |
 | ![Landing](docs/screenshots/readme_1_landing.png) | ![Model Explorer](docs/screenshots/readme_2_explorer.png) | ![Sweeps](docs/screenshots/readme_3_sweeps.png) |
-| Landing: live model status and a measured prediction | Explorer: the 12-block model anatomy | Sweeps: layer x position patching heatmap |
+| Landing: live model status and a measured prediction | Explorer: one ribbon through all 12 blocks, sized by measurement | Sweeps: layer x position patching heatmap |
 | ![Report](docs/screenshots/readme_4_report.png) | ![Verify](docs/screenshots/readme_5_verify.png) | ![Tour](docs/screenshots/readme_6_tour.png) |
 | Report: claims generated from measured values | Verify: reference scripts re-run live | Tour: six scenes over one report |
 
-To regenerate them, run `.\start.bat` and then `node scripts\capture_readme_screens.js`.
+To regenerate them, run `.\start.bat` and then `node scripts\capture_readme_screens.js`. If the app is already
+running, point the script at it with `$env:CAPTURE_URL = "http://localhost:5173"` first.
 
 ## What you can do
+
+**Look.** The Model Explorer follows one sentence through GPT-2. Its full map draws the residual stream as a
+ribbon whose width is the measured size after each block; open a block to see its steps in order, then any of
+its 12 attention heads.
 
 **Find.** Activation-patching sweeps (layer x position, layer x head) as
 heatmaps, direct logit attribution, the logit lens, attribution patching, and

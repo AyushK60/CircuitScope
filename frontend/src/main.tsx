@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 import "./explorer.css";
+import "./ribbon.css";
 import "./sweeps.css";
 import "./report.css";
 import "./verify.css";

@@ -13,9 +13,8 @@ Browser (React 19 + TS, Vite, port 5173)
                          caveats); pages/study/ holds Rq1Table, OverlapMatrix,
                          TopHeads (+ heads.ts helpers)
   components/SweepHeatmap.tsx → diverging Recovery heatmap + numbers table
-  components/architecture/ → canvas levels (ModelLevel, BlockLevel,
-                         AttentionLevel, shared parts, layout constants);
-                         ArchitectureCanvas.tsx composes them
+  components/architecture/ → full-map levels (RibbonLevel, BlockLevel,
+                         AttentionLevel); ArchitectureCanvas.tsx picks one
         │  fetch (typed client: frontend/src/api/client.ts)
         ▼
 FastAPI (127.0.0.1:8000)  backend/app/

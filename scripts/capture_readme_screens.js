@@ -19,6 +19,7 @@ const REPO = path.join(__dirname, "..");
 const OUT = path.join(REPO, "docs", "screenshots");
 
 function frontendUrl() {
+  if (process.env.CAPTURE_URL) return process.env.CAPTURE_URL.replace(/\/$/, "");
   const pidsPath = path.join(REPO, "outputs", "run", "pids.json");
   if (!fs.existsSync(pidsPath)) {
     console.error("outputs\\run\\pids.json not found. Start the stack first:  start.bat");
@@ -51,14 +52,16 @@ function frontendUrl() {
   await save("readme_1_landing.png");
   await page.setViewportSize({ width: 1280, height: 800 });
 
-  // 2. Explorer - whole-model anatomy
-  await page.goto(`${BASE}/#/explorer`, { waitUntil: "domcontentloaded" });
+  // 2. Explorer - the full map: the ribbon with the measured block sizes
+  await page.goto(`${BASE}/#/explorer?mode=map`, { waitUntil: "domcontentloaded" });
   await page.getByText("gpt2 · 12 blocks · 12 heads").waitFor({ timeout: 60000 });
+  await page.getByRole("button", { name: "Block 4: mean residual norm" }).waitFor({ timeout: 120000 });
+  await page.getByRole("button", { name: "Open transformer block 3" }).scrollIntoViewIfNeeded();
+  await page.getByRole("button", { name: "Open transformer block 3" }).click();
   await save("readme_2_explorer.png");
 
-  // 3. Sweeps - run the real layer x position patching sweep, wait for the heatmap
+  // 3. Sweeps - the page runs the real layer x position patching sweep on load; wait for the heatmap
   await page.goto(`${BASE}/#/sweeps`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("button", { name: "Run sweep" }).click();
   await page
     .getByRole("img", { name: /Patching sweep heatmap/ })
     .waitFor({ timeout: 240000 });

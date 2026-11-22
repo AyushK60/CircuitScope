@@ -1,10 +1,10 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import TopPredictions from "../TopPredictions";
 import TokenRow from "../TokenRow";
 import AttentionHeatmap from "../AttentionHeatmap";
 import ArchitectureCanvas from "../ArchitectureCanvas";
-import type { AttentionPattern, Candidate, ModelMeta } from "../../api/client";
+import type { AttentionPattern, Candidate, FlowData, ModelMeta } from "../../api/client";
 
 afterEach(cleanup);
 
@@ -73,7 +73,6 @@ describe("ArchitectureCanvas", () => {
         flow={null}
         level="model"
         layer={5}
-        keyboardFocusLayer={5}
         onLevel={() => {}}
         onLayer={() => {}}
         onHead={() => {}}
@@ -82,6 +81,57 @@ describe("ArchitectureCanvas", () => {
     for (let l = 0; l < 12; l++) {
       expect(screen.getByRole("button", { name: `Open transformer block ${l}` })).toBeTruthy();
     }
+  });
+
+  it("shows measured norms only when a run is loaded, and marks the intervention target", () => {
+    const flow: FlowData = {
+      hook_basis: "test",
+      tokens: ["<|endoftext|>", "Hi"],
+      token_ids: [50256, 1],
+      n_layers: 12,
+      blocks: Array.from({ length: 12 }, (_, l) => ({
+        layer: l,
+        resid_norm_per_token: [1, 2],
+        resid_norm_mean: l + 1,
+        attention: [],
+      })),
+      top_predictions: [{ token_id: 5, token: " there", prob: 0.4, logit: 1 }],
+    };
+    const props = { meta, level: "model" as const, layer: 5, onLevel: () => {}, onLayer: () => {}, onHead: () => {} };
+    const { rerender } = render(<ArchitectureCanvas {...props} flow={null} />);
+    expect(screen.queryByText("INTERVENTION TARGET", { exact: false })).toBeNull();
+    expect(screen.getAllByText("not measured yet")).toHaveLength(12);
+    rerender(<ArchitectureCanvas {...props} flow={flow} intervention={{ hook: "blocks.7.attn.hook_out", position: 1 }} />);
+    expect(screen.queryByText("not measured yet")).toBeNull();
+    expect(screen.getByText("12")).toBeTruthy();
+    expect(screen.getByText(/INTERVENTION TARGET · blocks\.7\.attn\.hook_out @ pos 1/)).toBeTruthy();
+    expect(screen.getByText("there")).toBeTruthy();
+  });
+
+  it("selects a block on click and only opens it from the expanded card", () => {
+    const onLayer = vi.fn();
+    const onLevel = vi.fn();
+    render(
+      <ArchitectureCanvas meta={meta} flow={null} level="model" layer={5} onLevel={onLevel} onLayer={onLayer} onHead={() => {}} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open transformer block 3" }));
+    expect(onLayer).toHaveBeenCalledWith(3);
+    expect(onLevel).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Look inside block 5" }));
+    expect(onLevel).toHaveBeenCalledWith("block");
+  });
+
+  it("walks block, attention and head levels", () => {
+    const onLevel = vi.fn();
+    const onHead = vi.fn();
+    const { rerender } = render(
+      <ArchitectureCanvas meta={meta} flow={null} level="block" layer={5} onLevel={onLevel} onLayer={() => {}} onHead={onHead} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open attention anatomy" }));
+    expect(onLevel).toHaveBeenCalledWith("attn");
+    rerender(<ArchitectureCanvas meta={meta} flow={null} level="attn" layer={5} onLevel={onLevel} onLayer={() => {}} onHead={onHead} />);
+    fireEvent.click(screen.getByRole("button", { name: "Inspect head 4" }));
+    expect(onHead).toHaveBeenCalledWith(4);
   });
 });
 

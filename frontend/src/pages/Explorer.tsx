@@ -185,7 +185,7 @@ export default function Explorer({ health }: { health: Health | null }) {
       {mode === "guided" ? (
         <GuidedTour flow={flow} meta={meta} />
       ) : (
-        <div className="ex-map theme-dark">
+        <div className="ex-map">
           <div className="ex-tokenbar">
             <span>Tokens received</span>
             <TokenRow tok={tokenization} />
@@ -194,7 +194,7 @@ export default function Explorer({ health }: { health: Health | null }) {
             <div className="state-banner warn" style={{ marginTop: "1rem" }} role="status">
               <span>
                 <strong>Intervention overlay:</strong> {intervention.hook} at token position {intervention.position} is
-                marked on the canvas (dashed brass box).{" "}
+                marked on the canvas (dashed red outline).{" "}
                 <a href={`#/playground?hook=${encodeURIComponent(intervention.hook)}&position=${intervention.position}`}>
                   Open it in the Playground →
                 </a>
@@ -216,7 +216,6 @@ export default function Explorer({ health }: { health: Health | null }) {
                 flow={flow}
                 level={level === "head" ? "attn" : (level as CanvasLevel)}
                 layer={layer}
-                keyboardFocusLayer={layer}
                 intervention={intervention}
                 onLevel={(l) => setLevel(l)}
                 onLayer={(l) => setLayer(l)}
@@ -284,13 +283,13 @@ function InspectorConsole({
         <ResidNormAcrossLayers flow={flow} onSelectLayer={onLayer} />
         <h3 style={{ marginTop: "1rem" }}>How to explore</h3>
         <p className="inspector-meta">
-          Click any block on the canvas to zoom into it. Inside, open the attention anatomy and pick one of
-          the 12 heads to see its real token-level pattern. Wheel zooms, drag pans, ↑↓ move the focus, Enter
-          opens.
+          Click a block on the ribbon to open it, then choose "Look inside". There you can open the attention
+          anatomy and pick one of the 12 heads to see its real token-level pattern. The arrow keys move between
+          blocks.
         </p>
         <p className="schematic-note">
-          <span className="static-badge">STRUCTURE + MEASURED</span> stage order from live metadata; brass
-          bars and token strip from the real run.
+          <span className="static-badge">STRUCTURE + MEASURED</span> stage order from live metadata; ribbon
+          width, blue bars and token strip from the real run.
         </p>
       </>
     );
@@ -402,7 +401,7 @@ function ResidNormAcrossLayers({
             flex: 1,
             height: `${(m / max) * 100}%`,
             minHeight: 4,
-            background: "linear-gradient(180deg, var(--brass), var(--accent-dim))",
+            background: "var(--measure)",
             borderRadius: 3,
             cursor: "pointer",
             position: "relative",
@@ -452,7 +451,7 @@ function HeadGrid({
           aria-label={`Head ${h}`}
         >
           <rect x={(h % cols) * (size + 6)} y={Math.floor(h / cols) * (size + 6)} width={size} height={size} fill="var(--bg-3)" stroke="var(--line-1)" />
-          <text x={(h % cols) * (size + 6) + size / 2} y={Math.floor(h / cols) * (size + 6) + size / 2 + 4} fill={h === selected ? "var(--lavender)" : "var(--text-1)"} fontSize={11} textAnchor="middle">
+          <text x={(h % cols) * (size + 6) + size / 2} y={Math.floor(h / cols) * (size + 6) + size / 2 + 4} fill={h === selected ? "var(--accent)" : "var(--text-1)"} fontSize={11} textAnchor="middle">
             {h}
           </text>
         </g>
@@ -487,7 +486,7 @@ function HeadGallery({
         const oy = Math.floor(h / 6) * (cell + 10) + 4;
         const px = (v: number) => {
           const t = Math.max(0, Math.min(1, v));
-          return `rgb(${Math.round(43 + t * 180)},${Math.round(48 + t * 73)},${Math.round(45 + t * 45)})`;
+          return `rgb(${Math.round(241 - t * 45)},${Math.round(234 - t * 170)},${Math.round(219 - t * 172)})`;
         };
         const n = head.length;
         const cs = cell / n;

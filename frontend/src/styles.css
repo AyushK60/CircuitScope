@@ -276,36 +276,8 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 .token.hl { border-color: var(--accent); color: var(--accent); }
 .token.subject { border-color: var(--warm); color: var(--warm); }
 
-/* ---- architecture canvas ---- */
+/* ---- shared ---- */
 
-.canvas-shell { width: 100%; }
-.canvas-controls {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-  background: rgba(30, 34, 33, 0.92);
-  border: 1px solid var(--line-0);
-  border-radius: var(--radius-sm);
-  padding: 0.3rem 0.45rem;
-}
-.canvas-controls button { padding: 0.2rem 0.55rem; font-size: 0.85rem; }
-.canvas-tooltip {
-  position: absolute;
-  z-index: 30;
-  pointer-events: none;
-  background: rgba(30, 34, 33, 0.97);
-  border: 1px solid var(--line-1);
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 0.7rem;
-  font-size: 0.78rem;
-  color: var(--text-1);
-  max-width: 300px;
-  box-shadow: var(--shadow);
-}
-.canvas-tooltip strong { color: var(--text-0); display: block; margin-bottom: 0.15rem; }
 .sr-only {
   position: absolute;
   width: 1px; height: 1px;
@@ -319,17 +291,11 @@ button.danger { border-color: #6e3232; color: var(--danger); }
 .diagram-wrap { width: 100%; overflow-x: auto; }
 .diagram-wrap svg.arch-svg { max-width: 100%; height: auto; }
 .arch-svg text { font-family: var(--font-mono); }
-.arch-node { cursor: pointer; }
-.arch-node rect { transition: stroke 0.15s, fill 0.15s; }
-.arch-node:hover rect { stroke: var(--accent); }
-.arch-node.selected rect { stroke: var(--lavender); stroke-width: 2; fill: #3a3644; }
-.arch-edge { stroke: var(--line-1); fill: none; }
-.arch-edge.resid { stroke: var(--violet); stroke-dasharray: 3 3; opacity: 0.7; }
 
 .head-cell { cursor: pointer; }
 .head-cell rect { rx: 3; }
 .head-cell:hover rect { stroke: var(--text-0); }
-.head-cell.selected rect { stroke: var(--lavender); stroke-width: 2; }
+.head-cell.selected rect { stroke: var(--accent); stroke-width: 2; }
 
 .heatmap-wrap { overflow-x: auto; }
 .legend-scale { display: flex; align-items: center; gap: 0.4rem; font-size: 0.78rem; color: var(--text-2); margin-top: 0.4rem; flex-wrap: wrap; }

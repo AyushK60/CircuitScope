@@ -1,105 +1,103 @@
 import type { FlowData, ModelMeta } from "../../api/client";
-import { hoverFromEvent, type HoverFn } from "./hover";
-import { AddNode, StageBand } from "./parts";
 
+/** Inside one block, in the order GPT-2 runs it (pre-LN): the ribbon is read by LN1 and
+ *  LN2 but never replaced; attention and the MLP each add their result back to it. */
 export default function BlockLevel({
   meta,
   flow,
   layer,
   onOpenAttention,
-  setHover,
+  onLayer,
+  onBack,
 }: {
   meta: ModelMeta;
   flow: FlowData | null;
   layer: number;
   onOpenAttention: () => void;
-  setHover: HoverFn;
+  onLayer: (l: number) => void;
+  onBack: () => void;
 }) {
-  const cx = 250;
-  const bw = 300;
-  const rx = 640;
-  const clear = () => setHover(null);
+  const norms = flow?.blocks[layer]?.resid_norm_per_token ?? null;
+  const max = norms ? Math.max(...norms, 1e-9) : 1;
+  const last = layer >= meta.n_layers - 1;
+
   return (
-    <g>
-      <text x={30} y={40} fill="var(--text-0)" fontSize={20} fontFamily="var(--font-display)">
-        Inside transformer block {layer}
-      </text>
-      <text x={30} y={60} fill="var(--text-2)" fontSize={11}>
-        GPT-2 pre-LN order - verified against the running model · hooks: blocks.{layer}.*
-      </text>
+    <div className="bk">
+      <header className="bk-head">
+        <div>
+          <p className="ex-kick">Inside one block</p>
+          <h2>Block {layer}</h2>
+          <p className="bk-sub">GPT-2 order, checked against the running model. Hooks: blocks.{layer}.*</p>
+        </div>
+        <div className="bk-nav">
+          <button type="button" onClick={() => onLayer(layer - 1)} disabled={layer <= 0}>
+            ← Block {layer - 1}
+          </button>
+          <button type="button" onClick={onBack}>
+            All blocks
+          </button>
+          <button type="button" onClick={() => onLayer(layer + 1)} disabled={last}>
+            Block {layer + 1} →
+          </button>
+        </div>
+      </header>
 
-      {/* residual rails */}
-      <path className="arch-edge resid" strokeWidth={2.2} d={`M ${rx} 96 L ${rx} 216`} markerEnd="url(#arrowResid)" />
-      <text x={rx + 10} y={160} fill="var(--violet)" fontSize={10} transform={`rotate(90 ${rx + 10} 160)`}>
-        pass-through (added, not consumed)
-      </text>
-      <path className="arch-edge resid" strokeWidth={2.2} d={`M ${rx} 336 L ${rx} 520`} markerEnd="url(#arrowResid)" />
-
-      {/* input */}
-      <StageBand x={cx} y={84} w={bw} title="input x" sub={`residual stream · ${meta.d_model} dims`} />
-      {flow && (
-        <g>
-          {flow.blocks[layer].resid_norm_per_token.slice(0, 14).map((n, i) => (
-            <rect key={i} x={cx + i * 20} y={126} width={12} height={Math.max(2, (n / 500) * 24)} fill="var(--brass)" opacity={0.8} />
-          ))}
-          <text x={cx + bw} y={140} fill="var(--brass)" fontSize={8} fontFamily="var(--font-mono)">
-            MEASURED norm/token
-          </text>
-        </g>
-      )}
-      <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${cx + bw / 2} 124 L ${cx + bw / 2} 148`} />
-
-      <StageBand x={cx} y={152} w={bw} title="LayerNorm 1" sub={`blocks.${layer}.ln1 · feeds attention only`} />
-      <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${cx + bw / 2} 192 L ${cx + bw / 2} 216`} />
-
-      {/* attention module - opens level 3 */}
-      <g
-        className="arch-node"
-        onClick={onOpenAttention}
-        role="button"
-        tabIndex={0}
-        aria-label="Open attention anatomy"
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onOpenAttention();
-          }
-        }}
-        onMouseEnter={(e) =>
-          setHover(hoverFromEvent(e, "Attention sublayer", [`12 heads × d_head ${meta.d_head}`, "click to open attention anatomy (scale 3)"]))
-        }
-        onMouseLeave={clear}
-      >
-        <rect x={cx} y={220} width={bw} height={96} rx={9} fill="var(--bg-3)" stroke="var(--accent)" strokeDasharray="none" />
-        <text x={cx + 14} y={244} fill="var(--text-0)" fontSize={13}>
-          Attention × {meta.n_heads} heads
-        </text>
-        <text x={cx + 14} y={262} fill="var(--text-2)" fontSize={10}>
-          Q · K · V projections → scores → softmax →
-        </text>
-        <text x={cx + 14} y={276} fill="var(--text-2)" fontSize={10}>
-          weighted values → output projection
-        </text>
-        <text x={cx + bw - 12} y={300} fill="var(--accent)" fontSize={10} textAnchor="end">
-          open anatomy →
-        </text>
-      </g>
-      <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${cx + bw / 2} 316 L ${cx + bw / 2} 340`} />
-
-      {/* first residual add */}
-      <AddNode x={cx + bw / 2} y={352} setHover={setHover} clear={clear} note="⊕ attention output added to stream" hook={`blocks.${layer}.hook_out (mid)`} />
-      <path className="arch-edge resid" d={`M ${rx} 216 C ${rx} 352, ${cx + bw / 2 + 40} 352, ${cx + bw / 2 + 26} 352`} />
-
-      <StageBand x={cx} y={384} w={bw} title="LayerNorm 2" sub={`blocks.${layer}.ln2 · feeds MLP only`} />
-      <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${cx + bw / 2} 424 L ${cx + bw / 2} 448`} />
-
-      <StageBand x={cx} y={452} w={bw} title={`MLP · ${meta.d_model} → ${meta.d_mlp} → ${meta.d_model}`} sub={`GELU · blocks.${layer}.mlp.*`} />
-      <path className="arch-edge" markerEnd="url(#arrowData)" d={`M ${cx + bw / 2} 492 L ${cx + bw / 2} 516`} />
-
-      <AddNode x={cx + bw / 2} y={528} setHover={setHover} clear={clear} note="⊕ MLP output added → next block" hook={`blocks.${layer}.hook_out`} />
-      <path className="arch-edge resid" d={`M ${rx} 336 C ${rx} 528, ${cx + bw / 2 + 40} 528, ${cx + bw / 2 + 26} 528`} />
-
-      <StageBand x={cx} y={560} w={bw} title="output → block " sub={`stream continues to block ${layer + 1 < meta.n_layers ? layer + 1 : "final LN"}`} />
-    </g>
+      <ol className="bk-flow">
+        <li className="bk-step">
+          <div className="bk-card">
+            <h3>Ribbon in</h3>
+            <p>{meta.d_model} numbers for every token.</p>
+            {norms && (
+              <div className="bk-norms" role="img" aria-label="Measured size of each token's vector after this block">
+                {norms.map((v, i) => (
+                  <span key={i} style={{ height: `${Math.max(8, Math.sqrt(v / max) * 100)}%` }} title={`${flow?.tokens[i] ?? i}: ${v}`} />
+                ))}
+              </div>
+            )}
+            {norms && <small>Measured size of each token's vector after this block (square-root scale; the first token is usually far larger than the rest).</small>}
+          </div>
+        </li>
+        <li className="bk-step tap">
+          <div className="bk-card slim">
+            <h3>LayerNorm 1</h3>
+            <p>A normalized copy goes to attention. The ribbon itself is untouched.</p>
+          </div>
+        </li>
+        <li className="bk-step">
+          <button type="button" className="bk-card main" aria-label="Open attention anatomy" onClick={onOpenAttention}>
+            <h3>Attention, {meta.n_heads} heads</h3>
+            <p>
+              Each head decides which earlier tokens to read ({meta.d_head} numbers each) and writes what it found.
+            </p>
+            <span className="go">Open attention anatomy →</span>
+          </button>
+        </li>
+        <li className="bk-step add">
+          <span className="bk-add" aria-hidden>+</span>
+          <p>Attention's result is added to the ribbon.</p>
+        </li>
+        <li className="bk-step tap">
+          <div className="bk-card slim">
+            <h3>LayerNorm 2</h3>
+            <p>A normalized copy goes to the MLP.</p>
+          </div>
+        </li>
+        <li className="bk-step">
+          <div className="bk-card main plain">
+            <h3>
+              MLP, {meta.d_model} → {meta.d_mlp} → {meta.d_model}
+            </h3>
+            <p>Each token is processed on its own, with a GELU in the middle. No looking at other tokens.</p>
+          </div>
+        </li>
+        <li className="bk-step add">
+          <span className="bk-add" aria-hidden>+</span>
+          <p>The MLP's result is added to the ribbon.</p>
+        </li>
+        <li className="bk-step end">
+          <p>{last ? "The ribbon continues to the final LayerNorm and the output." : `The ribbon continues into block ${layer + 1}.`}</p>
+        </li>
+      </ol>
+    </div>
   );
 }

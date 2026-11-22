@@ -29,8 +29,9 @@ test.describe("CircuitScope core journey", () => {
   test("explorer: model → block → attention anatomy → head heatmap", async ({ page }) => {
     await page.goto("/#/explorer?mode=map");
     await expect(page.getByText("gpt2 · 12 blocks · 12 heads")).toBeVisible({ timeout: 30_000 });
-    // drill into block 5 on the canvas
+    // pick block 5 on the ribbon, then look inside it
     await page.getByRole("button", { name: "Open transformer block 5" }).click();
+    await page.getByRole("button", { name: "Look inside block 5" }).click();
     await expect(page.getByText("Block 5 · verified pre-LN order")).toBeVisible({ timeout: 15_000 });
     // open attention anatomy
     await page.getByRole("button", { name: "Open attention anatomy" }).click();
